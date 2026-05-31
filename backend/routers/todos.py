@@ -1,0 +1,81 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import get_db
+import models, schemas
+
+router = APIRouter(tags=["todos"])
+
+
+# ── Threads ───────────────────────────────────────────────────────────────────
+
+@router.get("/todos", response_model=list[schemas.TodoThreadOut])
+def list_threads(db: Session = Depends(get_db)):
+    return db.query(models.TodoThread).order_by(models.TodoThread.created_at.desc()).all()
+
+
+@router.post("/todos", response_model=schemas.TodoThreadOut)
+def create_thread(data: schemas.TodoThreadCreate, db: Session = Depends(get_db)):
+    thread = models.TodoThread(**data.model_dump())
+    db.add(thread)
+    db.commit()
+    db.refresh(thread)
+    return thread
+
+
+@router.put("/todos/{thread_id}", response_model=schemas.TodoThreadOut)
+def update_thread(thread_id: int, data: schemas.TodoThreadUpdate, db: Session = Depends(get_db)):
+    thread = db.get(models.TodoThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(thread, k, v)
+    db.commit()
+    db.refresh(thread)
+    return thread
+
+
+@router.delete("/todos/{thread_id}")
+def delete_thread(thread_id: int, db: Session = Depends(get_db)):
+    thread = db.get(models.TodoThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    db.delete(thread)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Items — separate prefix to avoid route conflict ───────────────────────────
+
+@router.post("/todos/{thread_id}/items", response_model=schemas.TodoItemOut)
+def add_item(thread_id: int, data: schemas.TodoItemCreate, db: Session = Depends(get_db)):
+    thread = db.get(models.TodoThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    count = len(thread.items)
+    item = models.TodoItem(thread_id=thread_id, text=data.text, done=data.done, position=count)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/todo-items/{item_id}", response_model=schemas.TodoItemOut)
+def update_item(item_id: int, data: schemas.TodoItemUpdate, db: Session = Depends(get_db)):
+    item = db.get(models.TodoItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(item, k, v)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.delete("/todo-items/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.get(models.TodoItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}

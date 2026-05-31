@@ -1,0 +1,589 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700;800&display=swap');
+
+:root {
+  --sidebar-width: 240px;
+  --topbar-height: 76px;
+  --primary: #4e73df;
+  --primary-dark: #224abe;
+  --success: #1cc88a;
+  --info: #36b9cc;
+  --warning: #f6c23e;
+  --danger: #e74a3b;
+  --secondary: #858796;
+  --body-bg: #f8f9fc;
+  --card-border: #e3e6f0;
+  --text-dark: #5a5c69;
+  --text-muted: #858796;
+  --sidebar-text: rgba(255,255,255,0.8);
+  --card-radius: 0.35rem;
+  --card-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+  font-size: 0.925rem;
+  background: var(--body-bg);
+  color: var(--text-dark);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.pd-sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.pd-sidebar-brand {
+  height: var(--topbar-height);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.pd-brand-icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: #fff;
+  flex-shrink: 0;
+}
+
+.pd-brand-name {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  line-height: 1.1;
+}
+
+.pd-brand-sub {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+}
+
+.pd-nav-section {
+  padding: 16px 16px 5px;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.13rem;
+  text-transform: uppercase;
+}
+
+.pd-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 0;
+  transition: all 0.15s ease;
+}
+
+.pd-nav-link:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  text-decoration: none;
+}
+
+.pd-nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,0.13);
+  font-weight: 700;
+}
+
+.pd-nav-link .nav-icon {
+  width: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.pd-nav-link.active .nav-icon,
+.pd-nav-link:hover .nav-icon {
+  opacity: 1;
+}
+
+.pd-sidebar-footer {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.pd-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pd-sidebar-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 0.8rem; font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Main ────────────────────────────────────────────────────── */
+.pd-main {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.pd-topbar {
+  height: var(--topbar-height);
+  background: #fff;
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,0.08);
+}
+
+.pd-topbar-search {
+  flex: 1;
+  max-width: 320px;
+}
+
+.pd-topbar-search .input-group {
+  border-radius: 2rem;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  background: #f8f9fc;
+}
+
+.pd-topbar-search input {
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  color: var(--text-dark);
+}
+
+.pd-topbar-search input:focus {
+  box-shadow: none;
+  background: transparent;
+}
+
+.pd-topbar-search .input-group-text {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding-left: 14px;
+  font-size: 0.85rem;
+}
+
+.pd-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.pd-topbar-divider {
+  width: 0;
+  height: 2rem;
+  border-right: 1px solid var(--card-border);
+  margin: 0 8px;
+}
+
+.pd-icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  position: relative;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.pd-icon-btn:hover {
+  background: #eaecf4;
+  color: var(--text-dark);
+}
+
+.pd-notif-dot {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+}
+
+.pd-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-left: 1px solid var(--card-border);
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.pd-user-pill-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 0.75rem; font-weight: 700;
+}
+
+.pd-user-pill-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  display: none;
+}
+
+.pd-user-pill-role {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pd-user-pill-name, .pd-user-pill-role { display: block; }
+}
+
+/* ── Page ────────────────────────────────────────────────────── */
+.pd-page { padding: 28px 30px; flex: 1; }
+
+.pd-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.pd-page-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pd-page-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── SB Admin 2 Stat Cards ────────────────────────────────────── */
+.sba-card {
+  border: none !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+  border-left-width: 0.25rem !important;
+  border-left-style: solid !important;
+  background: #fff !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.sba-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 2rem 0 rgba(58,59,69,0.2) !important;
+}
+
+.sba-card .card-body { padding: 1.5rem !important; }
+
+.sba-card-primary  { border-left-color: var(--primary) !important; }
+.sba-card-success  { border-left-color: var(--success) !important; }
+.sba-card-info     { border-left-color: var(--info) !important; }
+.sba-card-warning  { border-left-color: var(--warning) !important; }
+.sba-card-danger   { border-left-color: var(--danger) !important; }
+
+.sba-card-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+.sba-card-success .sba-card-label  { color: var(--success); }
+.sba-card-info .sba-card-label     { color: var(--info); }
+.sba-card-warning .sba-card-label  { color: var(--warning); }
+.sba-card-danger .sba-card-label   { color: var(--danger); }
+
+.sba-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.2;
+}
+
+.sba-card-icon {
+  font-size: 2rem;
+  color: var(--card-border);
+}
+
+/* ── Generic Cards ───────────────────────────────────────────── */
+.pd-card {
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+  background: #fff !important;
+}
+
+.pd-card .card-header {
+  background: #f8f9fc !important;
+  border-bottom: 1px solid var(--card-border) !important;
+  padding: 12px 20px !important;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+.pd-card .card-body { padding: 24px !important; }
+
+/* Bootstrap card overrides for settings page */
+.card {
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.card-header {
+  background: #f8f9fc !important;
+  border-bottom: 1px solid var(--card-border) !important;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
+.pd-table {
+  font-size: 0.85rem;
+}
+
+.pd-table thead th {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  color: var(--text-muted);
+  background: #f8f9fc;
+  border-bottom: 2px solid var(--card-border) !important;
+  padding: 14px 18px !important;
+  white-space: nowrap;
+}
+
+.pd-table tbody td {
+  padding: 12px 18px !important;
+  vertical-align: middle;
+  border-color: var(--card-border) !important;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+}
+
+.pd-table tbody tr {
+  transition: background 0.12s;
+}
+
+.pd-table tbody tr:hover {
+  background: #f8f9fc !important;
+  cursor: pointer;
+}
+
+.row-overdue td { background: #fdf3f3 !important; }
+
+/* ── Priority badge ──────────────────────────────────────────── */
+.priority-badge {
+  width: 26px; height: 26px;
+  border-radius: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* ── Color dot ───────────────────────────────────────────────── */
+.color-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Member cards ────────────────────────────────────────────── */
+.member-card {
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+  background: #fff !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.member-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 2rem 0 rgba(58,59,69,0.2) !important;
+}
+
+.member-card .card-body { padding: 20px !important; }
+
+.member-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* ── Filter bar ──────────────────────────────────────────────── */
+.filter-card {
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+  background: #fff !important;
+  margin-bottom: 20px;
+}
+
+.filter-card .card-body { padding: 12px 16px !important; }
+
+/* ── Offcanvas detail panel ──────────────────────────────────── */
+.offcanvas { border-left: none !important; box-shadow: -4px 0 24px rgba(58,59,69,0.15); }
+
+.offcanvas-header {
+  border-bottom: 1px solid var(--card-border) !important;
+  padding: 16px 20px !important;
+  background: #f8f9fc;
+}
+
+.offcanvas-title { font-size: 0.95rem !important; font-weight: 700 !important; color: var(--primary) !important; }
+
+.offcanvas-body { padding: 20px !important; }
+
+.detail-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 0.85rem;
+}
+
+.detail-meta-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 100px;
+}
+
+/* ── Comment ─────────────────────────────────────────────────── */
+.comment-list { max-height: 220px; overflow-y: auto; }
+
+.comment-item {
+  background: #f8f9fc;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 9px 12px;
+  margin-bottom: 8px;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+}
+
+/* ── Forms ───────────────────────────────────────────────────── */
+.form-control, .form-select {
+  font-size: 0.9rem !important;
+  padding: 0.45rem 0.8rem !important;
+  border-radius: var(--card-radius) !important;
+  border-color: var(--card-border) !important;
+  color: var(--text-dark) !important;
+  background-color: #fff !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #bac8ff !important;
+  box-shadow: 0 0 0 0.2rem rgba(78,115,223,0.25) !important;
+}
+
+.form-label {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--text-dark) !important;
+  margin-bottom: 5px !important;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--card-radius) !important;
+  padding: 0.5rem 1.1rem !important;
+}
+
+.btn-sm {
+  font-size: 0.85rem !important;
+  padding: 0.375rem 0.85rem !important;
+}
+
+.btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+.modal-content { border-radius: var(--card-radius) !important; border: 1px solid var(--card-border) !important; box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important; }
+.modal-header { background: #f8f9fc !important; padding: 1rem 1.25rem !important; border-bottom-color: var(--card-border) !important; }
+.modal-body { padding: 1.25rem !important; }
+.modal-footer { padding: 0.75rem 1.25rem !important; border-top-color: var(--card-border) !important; }
+.modal-title { font-size: 1rem !important; font-weight: 700 !important; color: var(--primary) !important; }
+
+/* ── Badge ───────────────────────────────────────────────────── */
+.badge { font-size: 0.7rem !important; font-weight: 700 !important; border-radius: 0.35rem !important; padding: 0.25em 0.5em !important; }
+
+/* ── Alert ───────────────────────────────────────────────────── */
+.alert { border-radius: var(--card-radius) !important; font-size: 0.85rem !important; }
+
+/* ── Progress ────────────────────────────────────────────────── */
+.progress { border-radius: 0.35rem !important; background: #eaecf4 !important; height: 0.5rem; }
+
+/* ── Stat card old compat ────────────────────────────────────── */
+.pd-stat-card {
+  border: none !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--card-shadow) !important;
+  background: #fff !important;
+}
