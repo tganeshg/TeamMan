@@ -47,7 +47,7 @@ class Task(Base):
     task_type = Column(String, nullable=False, default="feature")  # bug or feature
     assignee_id = Column(Integer, ForeignKey("team_members.id", ondelete="SET NULL"), nullable=True)
     priority = Column(Integer, nullable=True)
-    status = Column(String, nullable=False, default="not_started")
+    status = Column(String, nullable=False, default="SID00")
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=func.now())
@@ -89,6 +89,19 @@ class PortalCredential(Base):
     id = Column(Integer, primary_key=True, index=True)
     portal_url = Column(String, nullable=False)
     api_token_enc = Column(Text, nullable=False)
+
+
+class TaskRelation(Base):
+    __tablename__ = "task_relations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    from_task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    to_task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    relation_type = Column(String, nullable=False)  # duplicate|parent|child|blocks|blocked_by|related_to
+    created_at = Column(DateTime, default=func.now())
+
+    from_task = relationship("Task", foreign_keys=[from_task_id])
+    to_task = relationship("Task", foreign_keys=[to_task_id])
 
 
 class AppConfig(Base):

@@ -2,14 +2,14 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.1 (Phase 1 Complete)
-**Last Updated:** 2026-05-31
+**Version:** 1.2 (Phase 1 Complete)
+**Last Updated:** 2026-06-01
 
 ---
 
 ## Overview
 
-PrimeDesk is a local team and task management application built for the Prime Team project lead. It manages team members, tasks, and meeting-driven todo threads. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs entirely on the local machine and opens in the browser — no cloud or internet required except for portal fetch.
+PrimeDesk is a local team and task management application built for the Prime Team project lead. It manages team members, tasks, task relations, and meeting-driven todo threads. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs entirely on the local machine and opens in the browser — no cloud or internet required except for portal fetch.
 
 ---
 
@@ -56,6 +56,7 @@ Each task has the following fields:
 | Color | Auto-computed on every read based on status and date |
 | Comments | Append-only daily progress notes (timestamped, author tagged) |
 | Attachments | One or more files per task (stored locally, downloadable) |
+| Relations | Typed links to other tasks (see Section 16) |
 
 ### Task Status Codes
 
@@ -189,7 +190,7 @@ Each thread represents a group of action items tied to a meeting or event:
 
 - Runs on **Ubuntu** and **Windows** with identical behavior
 - `start.sh` for Ubuntu — uses Python 3.10 virtualenv
-- `start.bat` for Windows
+- `start.bat` for Windows — uses Python venv inside `backend/.venv` to bypass system pip issues
 - Both scripts: create venv → install deps → start backend → start frontend → open browser
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:3000`
@@ -198,8 +199,8 @@ Each thread represents a group of action items tied to a meeting or event:
 
 ## 14. Dashboard
 
-- Stat cards: Total Tasks, Due Today, Overdue, Due This Week
-- Tasks by Status: progress bar breakdown with percentage
+- Stat cards in order: Total Tasks, **Overdue**, Due Today, Due This Week
+- Tasks by Status: progress bar breakdown with SID code + label + percentage
 - Team Workload table: member name, role, active task count, capacity bar, load label (Low / Medium / High)
 
 ---
@@ -208,6 +209,29 @@ Each thread represents a group of action items tied to a meeting or event:
 
 - Login screen to be added in a later phase
 - Current phase: no authentication, local access only
+
+---
+
+## 16. Task Relations
+
+- Tasks can be linked to other tasks with a typed relation
+- Relations are managed in the **Edit Task** modal under the Relations section
+- Relation types:
+
+| Type | Meaning |
+|---|---|
+| Duplicate of | This task is a duplicate of another |
+| Parent of | This task is the parent (the other is a sub-task) |
+| Child of | This task is a sub-task of another |
+| Blocks | This task must be resolved before the other can proceed |
+| Blocked by | This task is waiting on another task |
+| Related to | General loose connection between tasks |
+
+- Each relation shown as a color-coded pill with the related task title and portal ID
+- Individual relations can be removed with the × button
+- Duplicate relations between the same task pair are prevented
+- A task cannot be related to itself
+- For new tasks: save first, then edit to add relations
 
 ---
 

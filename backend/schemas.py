@@ -134,6 +134,30 @@ class AttachmentOut(BaseModel):
         from_attributes = True
 
 
+# ── Task Relations ────────────────────────────────────────────────────────────
+
+RELATION_TYPES = {"duplicate", "parent", "child", "blocks", "blocked_by", "related_to"}
+
+
+class TaskRelationCreate(BaseModel):
+    to_task_id: int
+    relation_type: str  # duplicate|parent|child|blocks|blocked_by|related_to
+
+
+class TaskRelationOut(BaseModel):
+    id: int
+    from_task_id: int
+    to_task_id: int
+    relation_type: str
+    related_task_id: int          # convenience: the "other" task id
+    related_task_title: str
+    related_task_portal_id: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ── Portal ────────────────────────────────────────────────────────────────────
 
 class PortalCredentialIn(BaseModel):

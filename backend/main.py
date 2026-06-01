@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 import models  # ensure all models are registered
 
-from routers import members, tasks, labels, comments, attachments, portal, dashboard, config, todos
+from routers import members, tasks, labels, comments, attachments, portal, dashboard, config, todos, relations
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,6 +27,7 @@ app.include_router(attachments.router)
 app.include_router(portal.router)
 app.include_router(config.router)
 app.include_router(todos.router)
+app.include_router(relations.router)
 
 
 @app.get("/health")

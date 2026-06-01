@@ -80,6 +80,19 @@ export interface DashboardData {
   workload: { id: number; name: string; role: string; active_tasks: number }[]
 }
 
+export type RelationType = 'duplicate' | 'parent' | 'child' | 'blocks' | 'blocked_by' | 'related_to'
+
+export interface TaskRelation {
+  id: number
+  from_task_id: number
+  to_task_id: number
+  relation_type: RelationType
+  related_task_id: number
+  related_task_title: string
+  related_task_portal_id: string | null
+  created_at: string
+}
+
 export interface TaskFilters {
   assignee_id?: number
   status?: string

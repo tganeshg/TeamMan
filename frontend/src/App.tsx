@@ -149,8 +149,8 @@ export default function App() {
 
             <div className="pd-topbar-divider" />
 
-            <a className="pd-icon-btn" href="#"><i className="bi bi-bell" /><span className="pd-notif-dot" /></a>
-            <a className="pd-icon-btn" href="#"><i className="bi bi-envelope" /></a>
+            {/* <a className="pd-icon-btn" href="#"><i className="bi bi-bell" /><span className="pd-notif-dot" /></a> */}
+            {/* <a className="pd-icon-btn" href="#"><i className="bi bi-envelope" /></a> */}
 
             <div className="pd-topbar-divider" />
 

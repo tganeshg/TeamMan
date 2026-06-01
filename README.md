@@ -2,7 +2,7 @@
 
 **Prime Team Task & Project Management Application**
 
-PrimeDesk is a local web application built for the Prime Team project lead. It manages team members, tasks (sourced from MantisHub or entered manually), meeting-driven todo threads, and tracks the next ship release date — all running on your local machine with no cloud or internet required (except for Mantis portal fetch).
+PrimeDesk is a local web application built for the Prime Team project lead. It manages team members, tasks (sourced from MantisHub or entered manually), meeting-driven todo threads, task relations, and tracks the next ship release date — all running on your local machine with no cloud or internet required (except for Mantis portal fetch).
 
 ---
 
@@ -10,8 +10,9 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 
 | Feature | Description |
 |---|---|
-| **Dashboard** | Stat cards, task-by-status breakdown, team workload view |
+| **Dashboard** | Stat cards (Total / Overdue / Due Today / Due This Week), task-by-status breakdown, team workload view |
 | **Task Management** | Full CRUD, priority auto-reorder per member, SID status codes, labels, comments, attachments |
+| **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |
 | **Team Management** | Add/edit/delete members with role hierarchy (Lead / Senior / Junior / Intern) |
 | **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress |
@@ -26,7 +27,7 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.10 + FastAPI + SQLAlchemy + SQLite |
-| Frontend | React 18 + TypeScript + Vite |
+| Frontend | React 18 + TypeScript + Vite 4 |
 | UI Theme | SB Admin 2 (Bootstrap 5) |
 | Font | Nunito (Google Fonts) |
 | Icons | Bootstrap Icons |
@@ -41,7 +42,7 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 
 ### Windows
 - Python 3.x with pip on PATH
-- Node.js 18+ and npm on PATH
+- Node.js 16+ and npm on PATH
 
 ---
 
@@ -61,12 +62,12 @@ start.bat
 ```
 
 Both scripts will:
-1. Create a Python virtual environment (Ubuntu) / install deps (Windows)
-2. Install backend Python dependencies
+1. Create a Python virtual environment inside `backend/.venv`
+2. Install backend Python dependencies into the venv
 3. Start the FastAPI backend on `http://localhost:8000`
 4. Install frontend npm dependencies
 5. Start the Vite dev server on `http://localhost:3000`
-6. Open the browser automatically
+6. Open the browser automatically after 10 seconds
 
 ---
 
@@ -157,6 +158,21 @@ Once configured, you can fetch task details on the Tasks page by entering a Mant
 
 ---
 
+## Task Relation Types
+
+| Type | Meaning |
+|---|---|
+| Duplicate of | This task is a duplicate of another |
+| Parent of | This task is the parent (contains the other) |
+| Child of | This task is a sub-task of another |
+| Blocks | This task must be resolved before the other can proceed |
+| Blocked by | This task is waiting on another |
+| Related to | General loose connection |
+
+Relations are managed in the **Edit Task** modal under the Relations section.
+
+---
+
 ## Ports
 
 | Service | URL |
@@ -171,6 +187,7 @@ Once configured, you can fetch task details on the Tasks page by entering a Mant
 
 **Phase 1 — Complete**
 - Full task management with SID status workflow
+- Task relations (Duplicate / Parent / Child / Blocks / Blocked By / Related To)
 - Mantis portal integration
 - Team member hierarchy
 - Todo threads with meeting references

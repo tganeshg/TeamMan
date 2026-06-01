@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.1 (Phase 1 Complete)
-**Last Updated:** 2026-05-31
+**Version:** 1.2 (Phase 1 Complete)
+**Last Updated:** 2026-06-01
 
 ---
 
@@ -60,8 +60,8 @@ PrimeDesk is a **local web application** — the backend runs on `localhost` and
 | Font | Nunito (Google Fonts) | — | Clean, modern dashboard font |
 | API Client | Axios | 1.7.2 | HTTP requests from frontend |
 | Date Handling | dayjs | 1.11.11 | Lightweight date formatting |
-| Build Tool | Vite | 5.2.12 | Fast HMR dev server |
-| Python Runtime | Python 3.10 | — | Used via venv (system Python 3.14 locked) |
+| Build Tool | Vite | 4.5.3 | Fast HMR dev server (v4 for Node 16 compatibility) |
+| Python Runtime | Python 3.10 | — | Used via venv (system Python may be locked) |
 
 ---
 
@@ -72,7 +72,7 @@ TeamMan/
 ├── requirements.md             ← Requirements document
 ├── design.md                   ← This design document
 ├── start.sh                    ← Ubuntu launcher
-├── start.bat                   ← Windows launcher
+├── start.bat                   ← Windows launcher (uses backend/.venv)
 │
 ├── backend/
 │   ├── main.py                 ← FastAPI app, CORS, router registration, DB init
@@ -91,6 +91,7 @@ TeamMan/
 │   │   ├── labels.py           ← CRUD for labels
 │   │   ├── comments.py         ← Append comments per task
 │   │   ├── attachments.py      ← Upload / download / delete files per task
+│   │   ├── relations.py        ← Task-to-task relation CRUD
 │   │   ├── portal.py           ← Mantis fetch + credential save/test
 │   │   ├── config.py           ← App-level config (release date)
 │   │   └── todos.py            ← Todo threads + items CRUD
@@ -99,7 +100,7 @@ TeamMan/
 │   │   ├── portal_fetcher.py   ← Async Mantis REST API client
 │   │   └── crypto.py           ← Fernet encrypt / decrypt for API token
 │   │
-│   └── .venv/                  ← Python 3.10 virtual environment
+│   └── .venv/                  ← Python virtual environment (auto-created by start scripts)
 │
 └── frontend/
     ├── package.json
@@ -148,11 +149,13 @@ The UI is styled after the **SB Admin 2** Bootstrap admin template by Start Boot
 ### Layout
 
 - **Fixed sidebar** (240px) — dark blue gradient (`#4e73df → #224abe`), scrollable nav
-- **Sticky topbar** (76px) — white, search bar (pill shape), release badge, icon buttons, user avatar
+- **Sticky topbar** (76px) — white, search bar (pill shape), release badge, user avatar
 - **Page content** — `28px 30px` padding, card-based layout
 - **Page header** — title (`h1`) + subtitle + action button slot (portal pattern)
 - **Horizontal rule** — separates header from page content
 - **Sidebar footer** — user avatar + role (white text)
+
+> **Note:** Notification bell and mail icons in the topbar are hidden (commented out) — reserved for future use.
 
 ### Page Header Action Button Pattern
 
@@ -166,17 +169,17 @@ Stat cards use the SB Admin 2 signature **colored left-border** style:
 - Large bold value number
 - Icon on the right in a large muted gray
 
-| Card | Border Color | Class |
-|---|---|---|
-| Total Tasks | `#4e73df` | `sba-card-primary` |
-| Due Today | `#f6c23e` | `sba-card-warning` |
-| Overdue | `#e74a3b` | `sba-card-danger` |
-| Due This Week | `#36b9cc` | `sba-card-info` |
+| Card | Border Color | Class | Order |
+|---|---|---|---|
+| Total Tasks | `#4e73df` | `sba-card-primary` | 1st |
+| Overdue | `#e74a3b` | `sba-card-danger` | 2nd |
+| Due Today | `#f6c23e` | `sba-card-warning` | 3rd |
+| Due This Week | `#36b9cc` | `sba-card-info` | 4th |
 
 ### Pages
 
 #### Dashboard
-- 4 stat cards (border-left SB Admin 2 style): Total Tasks, Due Today, Overdue, Due This Week
+- 4 stat cards (border-left SB Admin 2 style): Total Tasks, Overdue, Due Today, Due This Week
 - Status breakdown card: colored dot + SID code + label + count + progress bar + percentage
 - Team Workload table: avatar initial, name, role badge, active task count, capacity bar, load badge
 
@@ -184,7 +187,7 @@ Stat cards use the SB Admin 2 signature **colored left-border** style:
 - Filter bar: member, status, type, end-date range, sort field + direction toggle
 - Table columns: Priority badge, Color dot, Portal ID, Title (clickable), Type, Assignee, Status badge, Due Date, Labels, Actions
 - Row click → opens **Offcanvas** detail panel (right side, 560px)
-- **New Task / Edit modal** (700px): type selector, portal fetch, all fields, label toggle chips
+- **New Task / Edit modal** (700px): type selector, portal fetch, all fields, label toggle chips, relations section
 - **Task Detail Offcanvas**: meta grid, label chips, description, comment thread, attach file
 - `+ New Task` button portalled into page header
 
@@ -230,13 +233,22 @@ Stat cards use the SB Admin 2 signature **colored left-border** style:
 | task_type | TEXT | `bug` or `feature` |
 | assignee_id | INTEGER FK | → team_members.id, SET NULL on delete |
 | priority | INTEGER | Per-member queue position |
-| status | TEXT | SID00–SID14 |
+| status | TEXT | SID00–SID14 (default: SID00) |
 | start_date | DATE | Nullable |
 | end_date | DATE | Nullable |
 | created_at | DATETIME | Auto |
 | updated_at | DATETIME | Auto-update |
 
 > **Note:** `color` is NOT stored — computed at read time by `compute_color()`.
+
+### `task_relations`
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER PK | Auto-increment |
+| from_task_id | INTEGER FK | → tasks.id (CASCADE DELETE) |
+| to_task_id | INTEGER FK | → tasks.id (CASCADE DELETE) |
+| relation_type | TEXT | duplicate / parent / child / blocks / blocked_by / related_to |
+| created_at | DATETIME | Auto |
 
 ### `labels`
 | Column | Type | Notes |
@@ -398,6 +410,13 @@ Fields extracted from response:
 | POST | /tasks/{id}/labels/{label_id} | Add label |
 | DELETE | /tasks/{id}/labels/{label_id} | Remove label |
 
+### Relations
+| Method | Path | Action |
+|---|---|---|
+| GET | /tasks/{id}/relations | List all relations for a task |
+| POST | /tasks/{id}/relations | Add a relation (type + target task id) |
+| DELETE | /tasks/{id}/relations/{rel_id} | Remove a relation |
+
 ### Labels
 | Method | Path | Action |
 |---|---|---|
@@ -447,7 +466,35 @@ Fields extracted from response:
 
 ---
 
-## 10. Launch Scripts
+## 10. Task Relations Design
+
+Relations are stored as directed pairs in `task_relations`. The API returns relations from both directions for a given task (where `from_task_id = id` OR `to_task_id = id`), always presenting the "other" task as `related_task_id`.
+
+**Validation rules:**
+- `relation_type` must be one of: `duplicate`, `parent`, `child`, `blocks`, `blocked_by`, `related_to`
+- A task cannot be related to itself
+- Duplicate relations (same pair + same type, either direction) are rejected with HTTP 409
+
+**UI — Edit Task modal:**
+- Relations section shows existing relations as color-coded pills
+- Each pill shows: relation type label + related task title (+ portal ID if set)
+- × button removes the relation instantly (no confirmation needed)
+- Add-relation row: type dropdown + task dropdown + Add button
+- New tasks: relations section shows "save first" message; relations are added after task exists
+
+**Relation type colors:**
+| Type | Color |
+|---|---|
+| duplicate | Gray `#858796` |
+| parent | Blue `#4e73df` |
+| child | Cyan `#36b9cc` |
+| blocks | Red `#e74a3b` |
+| blocked_by | Yellow `#f6c23e` |
+| related_to | Green `#1cc88a` |
+
+---
+
+## 11. Launch Scripts
 
 ### `start.sh` (Ubuntu)
 ```bash
@@ -461,11 +508,12 @@ Fields extracted from response:
 
 ### `start.bat` (Windows)
 ```bat
-:: Installs backend deps (system pip)
-:: Opens backend in a new CMD window
+:: Creates Python venv at backend\.venv if not present
+:: Installs backend deps inside venv (bypasses system pip issues)
+:: Opens backend in a new CMD window (kept open on error)
 :: Installs frontend npm deps
-:: Opens frontend in a new CMD window
-:: Opens http://localhost:3000 after 5s
+:: Opens frontend in a new CMD window (kept open on error)
+:: Opens http://localhost:3000 after 10s (allows both servers to start)
 ```
 
 **Ports used:**
@@ -475,16 +523,21 @@ Fields extracted from response:
 
 ---
 
-## 11. Known Constraints & Decisions
+## 12. Known Constraints & Decisions
 
 | Decision | Reason |
 |---|---|
-| Python 3.10 venv (not system Python 3.14) | Ubuntu system Python 3.14 is PEP 668 locked, pip blocked |
+| Python venv (not system Python) | System Python may have broken pip or be PEP 668 locked (Ubuntu 3.14) |
+| Vite pinned to v4.5.3 | Windows machine runs Node 16; Vite 5 requires Node 18+ |
 | Color computed at read time, not stored | Stays accurate as dates change without scheduled jobs |
 | SQLite (not PostgreSQL) | Single-user local app, zero-config requirement |
 | No login screen in v1 | Explicitly deferred to v2 per project lead decision |
-| SB Admin 2 theme | Project lead selected this theme in Phase 1 for its clean blue gradient sidebar and border-left stat cards |
+| SB Admin 2 theme | Project lead selected this theme for its clean blue gradient sidebar and border-left stat cards |
 | Nunito font | Modern dashboard aesthetic matching SB Admin 2 reference |
+| Notification / mail icons hidden | Commented out in App.tsx topbar — reserved for future use |
+| Dashboard stat card order: Total → Overdue → Due Today → Due This Week | Most urgent items (overdue) surfaced before informational (due today/week) |
+| Task status default: SID00 | Replaced old `not_started` string; existing rows migrated via one-time script |
 | Todo item routes at `/todo-items/` (not `/todos/items/`) | Avoids FastAPI route conflict with `/todos/{thread_id}` integer path parameter |
-| Page header action buttons via React portal | Decouples page-specific buttons (New Task, Add Member, New Thread) from the shared App.tsx layout without prop drilling |
+| Page header action buttons via React portal | Decouples page-specific buttons from the shared App.tsx layout without prop drilling |
 | Release date in `app_config` key-value table | Flexible config store without schema migration per new setting |
+| Relations stored as directed pairs | Simple to query; both directions fetched and merged at API layer |

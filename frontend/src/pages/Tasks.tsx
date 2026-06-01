@@ -9,8 +9,9 @@ import {
   getTasks, getTask, createTask, updateTask, deleteTask,
   getMembers, getLabels, addComment, uploadAttachment,
   deleteAttachment, downloadUrl, fetchMantisIssue, assignTask,
+  getRelations, addRelation, deleteRelation,
 } from '../api/client'
-import type { Task, TaskDetail, Member, Label, TaskFilters } from '../types'
+import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType } from '../types'
 
 const COLOR_HEX: Record<string, string> = {
   gray: '#858796', blue: '#4e73df', orange: '#f6c23e', red: '#e74a3b', green: '#1cc88a',
@@ -70,6 +71,23 @@ const ROLE_VARIANT: Record<string, string> = {
   Lead: 'warning', Senior: 'primary', Junior: 'success', Intern: 'secondary',
 }
 
+const RELATION_LABEL: Record<RelationType, string> = {
+  duplicate:   'Duplicate of',
+  parent:      'Parent of',
+  child:       'Child of',
+  blocks:      'Blocks',
+  blocked_by:  'Blocked by',
+  related_to:  'Related to',
+}
+const RELATION_COLOR: Record<RelationType, string> = {
+  duplicate:  '#858796',
+  parent:     '#4e73df',
+  child:      '#36b9cc',
+  blocks:     '#e74a3b',
+  blocked_by: '#f6c23e',
+  related_to: '#1cc88a',
+}
+
 function PriorityDot({ p }: { p: number | null }) {
   if (p == null) return <span className="text-muted">—</span>
   const bg = p === 1 ? '#dc3545' : p === 2 ? '#fd7e14' : '#0d6efd'
@@ -99,6 +117,13 @@ export default function Tasks() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
+  // Relations state (for modal)
+  const [relations, setRelations] = useState<TaskRelation[]>([])
+  const [relType, setRelType] = useState<RelationType>('related_to')
+  const [relTaskId, setRelTaskId] = useState<string>('')
+  const [relError, setRelError] = useState('')
+  const [relSaving, setRelSaving] = useState(false)
+
   const load = useCallback(() => {
     setLoading(true)
     getTasks(filters).then(setTasks).finally(() => setLoading(false))
@@ -122,8 +147,12 @@ export default function Tasks() {
 
   const openCreate = () => {
     setEditingTask(null)
-    setForm({ task_type: 'feature', status: 'not_started', label_ids: [] })
+    setForm({ task_type: 'feature', status: 'SID00', label_ids: [] })
     setMantisError('')
+    setRelations([])
+    setRelType('related_to')
+    setRelTaskId('')
+    setRelError('')
     setShowModal(true)
   }
 
@@ -136,6 +165,10 @@ export default function Tasks() {
       end_date: task.end_date ?? '',
     })
     setMantisError('')
+    setRelType('related_to')
+    setRelTaskId('')
+    setRelError('')
+    getRelations(task.id).then(setRelations).catch(() => setRelations([]))
     setShowModal(true)
   }
 
@@ -504,6 +537,106 @@ export default function Tasks() {
                 })}
                 {labels.length === 0 && <small className="text-muted">Create labels in Settings first.</small>}
               </div>
+            </Col>
+
+            {/* ── Relations ── */}
+            <Col xs={12}>
+              <hr className="my-1" />
+              <Form.Label className="small fw-semibold d-flex align-items-center gap-2">
+                <i className="bi bi-diagram-2 text-primary" />
+                Task Relations
+              </Form.Label>
+
+              {/* Existing relations */}
+              {relations.length > 0 && (
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  {relations.map(r => (
+                    <div
+                      key={r.id}
+                      className="d-flex align-items-center gap-1 rounded-pill px-2 py-1"
+                      style={{
+                        background: `${RELATION_COLOR[r.relation_type as RelationType]}18`,
+                        border: `1px solid ${RELATION_COLOR[r.relation_type as RelationType]}55`,
+                        fontSize: '0.78rem',
+                      }}
+                    >
+                      <span style={{ color: RELATION_COLOR[r.relation_type as RelationType], fontWeight: 700 }}>
+                        {RELATION_LABEL[r.relation_type as RelationType]}
+                      </span>
+                      <span className="text-dark fw-semibold">
+                        {r.related_task_portal_id ? `#${r.related_task_portal_id} ` : ''}
+                        {r.related_task_title}
+                      </span>
+                      {editingTask && (
+                        <button
+                          type="button"
+                          className="btn-close ms-1"
+                          style={{ fontSize: '0.5rem' }}
+                          onClick={async () => {
+                            await deleteRelation(editingTask.id, r.id)
+                            setRelations(prev => prev.filter(x => x.id !== r.id))
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add relation row — only for existing tasks */}
+              {editingTask ? (
+                <div className="d-flex gap-2 align-items-start flex-wrap">
+                  <Form.Select
+                    size="sm"
+                    style={{ width: 160 }}
+                    value={relType}
+                    onChange={e => { setRelType(e.target.value as RelationType); setRelError('') }}
+                  >
+                    {(Object.keys(RELATION_LABEL) as RelationType[]).map(k => (
+                      <option key={k} value={k}>{RELATION_LABEL[k]}</option>
+                    ))}
+                  </Form.Select>
+                  <Form.Select
+                    size="sm"
+                    style={{ width: 240 }}
+                    value={relTaskId}
+                    onChange={e => { setRelTaskId(e.target.value); setRelError('') }}
+                  >
+                    <option value="">— select task —</option>
+                    {tasks
+                      .filter(t => t.id !== editingTask.id)
+                      .map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.portal_task_id ? `#${t.portal_task_id} ` : ''}{t.title}
+                        </option>
+                      ))}
+                  </Form.Select>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    disabled={!relTaskId || relSaving}
+                    onClick={async () => {
+                      if (!relTaskId) return
+                      setRelSaving(true)
+                      setRelError('')
+                      try {
+                        const newRel = await addRelation(editingTask.id, Number(relTaskId), relType)
+                        setRelations(prev => [...prev, newRel])
+                        setRelTaskId('')
+                      } catch (e: any) {
+                        setRelError(e?.response?.data?.detail ?? 'Failed to add relation.')
+                      } finally {
+                        setRelSaving(false)
+                      }
+                    }}
+                  >
+                    {relSaving ? <Spinner animation="border" size="sm" /> : <><i className="bi bi-plus me-1" />Add</>}
+                  </Button>
+                  {relError && <div className="text-danger small w-100 mt-1">{relError}</div>}
+                </div>
+              ) : (
+                <small className="text-muted">Save the task first, then add relations by editing it.</small>
+              )}
             </Col>
           </Row>
         </Modal.Body>

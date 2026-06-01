@@ -36,8 +36,8 @@ const ROLE_BADGE: Record<string, string> = {
 
 const STAT_CARDS = [
   { key: 'total',    label: 'Total Tasks',     icon: 'bi-list-check',               variant: 'sba-card-primary' },
-  { key: 'due_today', label: 'Due Today',      icon: 'bi-clock-history',             variant: 'sba-card-warning' },
   { key: 'overdue',  label: 'Overdue',         icon: 'bi-exclamation-triangle-fill', variant: 'sba-card-danger'  },
+  { key: 'due_today', label: 'Due Today',      icon: 'bi-clock-history',             variant: 'sba-card-warning' },
   { key: 'due_week', label: 'Due This Week',   icon: 'bi-calendar-week-fill',        variant: 'sba-card-info'    },
 ]
 

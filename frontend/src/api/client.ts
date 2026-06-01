@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type {
   Member, Task, TaskDetail, Label, Comment, Attachment,
-  MantisIssue, DashboardData, TaskFilters,
+  MantisIssue, DashboardData, TaskFilters, TaskRelation, RelationType,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -117,6 +117,16 @@ export const deleteAttachment = (id: number) =>
   api.delete(`/attachments/${id}`)
 
 export const downloadUrl = (id: number) => `/api/attachments/${id}/download`
+
+// ── Relations ──────────────────────────────────────────────────────────────
+export const getRelations = (taskId: number) =>
+  api.get<TaskRelation[]>(`/tasks/${taskId}/relations`).then(r => r.data)
+
+export const addRelation = (taskId: number, to_task_id: number, relation_type: RelationType) =>
+  api.post<TaskRelation>(`/tasks/${taskId}/relations`, { to_task_id, relation_type }).then(r => r.data)
+
+export const deleteRelation = (taskId: number, relationId: number) =>
+  api.delete(`/tasks/${taskId}/relations/${relationId}`)
 
 // ── Portal ─────────────────────────────────────────────────────────────────
 export const getPortalStatus = () =>
