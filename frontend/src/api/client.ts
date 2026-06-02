@@ -2,6 +2,7 @@ import axios from 'axios'
 import type {
   Member, Task, TaskDetail, Label, Comment, Attachment,
   MantisIssue, DashboardData, TaskFilters, TaskRelation, RelationType,
+  Release, ReleaseReport,
 } from '../types'
 
 const api = axios.create({ baseURL: '/api' })
@@ -147,6 +148,26 @@ export const getReleaseDate = () =>
 
 export const setReleaseDate = (release_date: string | null) =>
   api.post<{ release_date: string | null }>('/config/release-date', { release_date }).then(r => r.data)
+
+// ── Releases ───────────────────────────────────────────────────
+export const getReleases = () =>
+  api.get<Release[]>('/releases').then(r => r.data)
+
+export const createRelease = (name: string, release_date: string) =>
+  api.post<Release>('/releases', { name, release_date }).then(r => r.data)
+
+export const updateRelease = (id: number, data: Partial<{ name: string; release_date: string; status: string }>) =>
+  api.put<Release>(`/releases/${id}`, data).then(r => r.data)
+
+export const deleteRelease = (id: number) =>
+  api.delete(`/releases/${id}`)
+
+// ── Reports ────────────────────────────────────────────────────
+export const getReport = (releaseId: number) =>
+  api.get<ReleaseReport>(`/reports/${releaseId}`).then(r => r.data)
+
+export const exportDocxUrl = (releaseId: number) =>
+  `/api/reports/${releaseId}/export/docx`
 
 // ── Todos ──────────────────────────────────────────────────────
 export interface TodoItem { id: number; thread_id: number; text: string; done: boolean; position: number; created_at: string }

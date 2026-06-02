@@ -9,9 +9,9 @@ import {
   getTasks, getTask, createTask, updateTask, deleteTask,
   getMembers, getLabels, addComment, uploadAttachment,
   deleteAttachment, downloadUrl, fetchMantisIssue, assignTask,
-  getRelations, addRelation, deleteRelation,
+  getRelations, addRelation, deleteRelation, getReleases,
 } from '../api/client'
-import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType } from '../types'
+import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release } from '../types'
 
 const COLOR_HEX: Record<string, string> = {
   gray: '#858796', blue: '#4e73df', orange: '#f6c23e', red: '#e74a3b', green: '#1cc88a',
@@ -98,6 +98,7 @@ export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [labels, setLabels] = useState<Label[]>([])
+  const [releases, setReleases] = useState<Release[]>([])
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>({ sort_by: 'priority', sort_order: 'asc' })
 
@@ -133,6 +134,7 @@ export default function Tasks() {
   useEffect(() => {
     getMembers().then(setMembers)
     getLabels().then(setLabels)
+    getReleases().then(setReleases)
   }, [])
 
   const openDetail = async (task: Task) => {
@@ -163,6 +165,7 @@ export default function Tasks() {
       label_ids: task.labels.map(l => l.id),
       start_date: task.start_date ?? '',
       end_date: task.end_date ?? '',
+      release_id: task.release_id ?? null,
     })
     setMantisError('')
     setRelType('related_to')
@@ -208,6 +211,7 @@ export default function Tasks() {
         assignee_id: form.assignee_id ? Number(form.assignee_id) : undefined,
         priority: form.priority ? Number(form.priority) : undefined,
         label_ids: form.label_ids ?? [],
+        release_id: form.release_id ? Number(form.release_id) : null,
       }
       if (editingTask) {
         await updateTask(editingTask.id, payload)
@@ -509,6 +513,18 @@ export default function Tasks() {
               <Form.Label className="small fw-semibold">Status</Form.Label>
               <Form.Select size="sm" value={form.status ?? 'SID00'} onChange={e => setField('status', e.target.value)}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
+              </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label className="small fw-semibold">Release</Form.Label>
+              <Form.Select size="sm" value={form.release_id ?? ''} onChange={e => setField('release_id', e.target.value ? Number(e.target.value) : null)}>
+                <option value="">— No Release —</option>
+                {releases.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.release_date}){r.status === 'active' ? ' ★' : ''}
+                  </option>
+                ))}
               </Form.Select>
             </Col>
 

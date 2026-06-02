@@ -6,13 +6,15 @@ import Tasks from './pages/Tasks'
 import Team from './pages/Team'
 import Todo from './pages/Todo'
 import Settings from './pages/Settings'
-import { getReleaseDate } from './api/client'
+import Reports from './pages/Reports'
+import { getReleases } from './api/client'
 
 const navItems = [
   { to: '/', icon: 'bi-speedometer2', label: 'Dashboard' },
   { to: '/tasks', icon: 'bi-check2-square', label: 'Tasks' },
   { to: '/team', icon: 'bi-people-fill', label: 'Team' },
   { to: '/todo', icon: 'bi-card-checklist', label: 'Todo' },
+  { to: '/reports', icon: 'bi-bar-chart-line-fill', label: 'Reports' },
   { to: '/settings', icon: 'bi-gear-fill', label: 'Settings' },
 ]
 
@@ -21,10 +23,11 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/tasks': { title: 'Task Management', sub: 'Manage and track your team tasks' },
   '/team': { title: 'Team Members', sub: 'Manage your Prime Team' },
   '/todo': { title: 'Todo', sub: 'Threads, action items and meeting notes' },
+  '/reports': { title: 'Reports', sub: 'Release performance reports for your team' },
   '/settings': { title: 'Settings', sub: 'Configure PrimeDesk preferences' },
 }
 
-function ReleaseBadge({ date }: { date: string }) {
+function ReleaseBadge({ date, name }: { date: string; name: string | null }) {
   const rd = dayjs(date)
   const daysLeft = rd.diff(dayjs(), 'day')
   const isPast = daysLeft < 0
@@ -51,7 +54,7 @@ function ReleaseBadge({ date }: { date: string }) {
       <i className={`bi ${icon}`} style={{ color: textColor, fontSize: '0.85rem' }} />
       <div style={{ lineHeight: 1.25 }}>
         <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#9e9fb4', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Next Ship Release
+          {name ? `Release: ${name}` : 'Next Ship Release'}
         </div>
         <div style={{ fontSize: '0.82rem', fontWeight: 800, color: textColor }}>
           {rd.format('DD MMM YYYY')}
@@ -76,10 +79,20 @@ export default function App() {
   const location = useLocation()
   const page = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
   const [releaseDate, setReleaseDate] = useState<string | null>(null)
+  const [releaseName, setReleaseName] = useState<string | null>(null)
 
   useEffect(() => {
-    getReleaseDate().then(r => setReleaseDate(r.release_date))
-  }, [location.pathname]) // refresh when navigating back from Settings
+    getReleases().then(list => {
+      const active = list.find(r => r.status === 'active')
+      if (active) {
+        setReleaseDate(active.release_date)
+        setReleaseName(active.name)
+      } else {
+        setReleaseDate(null)
+        setReleaseName(null)
+      }
+    }).catch(() => {})
+  }, [location.pathname])
 
   return (
     <div>
@@ -145,7 +158,7 @@ export default function App() {
 
           <div className="pd-topbar-actions">
             {/* Release date badge — always visible in topbar */}
-            {releaseDate && <ReleaseBadge date={releaseDate} />}
+            {releaseDate && <ReleaseBadge date={releaseDate} name={releaseName} />}
 
             <div className="pd-topbar-divider" />
 
@@ -181,6 +194,7 @@ export default function App() {
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/team" element={<Team />} />
             <Route path="/todo" element={<Todo />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>

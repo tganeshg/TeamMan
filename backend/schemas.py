@@ -59,6 +59,7 @@ class TaskBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: str = "SID00"
+    release_id: Optional[int] = None
 
 
 class TaskCreate(TaskBase):
@@ -78,6 +79,7 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[int] = None
     priority: Optional[int] = None
     label_ids: Optional[List[int]] = None
+    release_id: Optional[int] = None
 
 
 class AssignRequest(BaseModel):
@@ -92,6 +94,8 @@ class TaskOut(TaskBase):
     priority: Optional[int] = None
     color: str = "gray"
     labels: List[LabelOut] = []
+    release_id: Optional[int] = None
+    closed_at: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 
@@ -132,6 +136,74 @@ class AttachmentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Releases ──────────────────────────────────────────────────────────────────
+
+class ReleaseCreate(BaseModel):
+    name: str
+    release_date: date
+
+
+class ReleaseUpdate(BaseModel):
+    name: Optional[str] = None
+    release_date: Optional[date] = None
+    status: Optional[str] = None  # active | completed
+
+
+class ReleaseOut(BaseModel):
+    id: int
+    name: str
+    release_date: date
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Report ─────────────────────────────────────────────────────────────────────
+
+class MemberReportRow(BaseModel):
+    member_id: int
+    member_name: str
+    member_role: str
+    total_assigned: int
+    closed: int
+    on_time: int
+    early: int
+    overdue_closed: int   # closed but after end_date
+    still_open: int       # not closed, past end_date
+    in_progress: int      # not closed, within deadline
+
+
+class ReportTaskRow(BaseModel):
+    task_id: int
+    portal_task_id: Optional[str]
+    title: str
+    task_type: str
+    assignee_name: Optional[str]
+    status: str
+    end_date: Optional[date]
+    closed_at: Optional[date]
+    timing: str           # early | on_time | overdue | open | no_date
+
+
+class ReleaseReport(BaseModel):
+    release_id: int
+    release_name: str
+    release_date: date
+    release_status: str
+    generated_on: date
+    total_tasks: int
+    total_closed: int
+    total_on_time: int
+    total_early: int
+    total_overdue_closed: int
+    total_still_open: int
+    total_in_progress: int
+    members: List[MemberReportRow]
+    tasks: List[ReportTaskRow]
 
 
 # ── Task Relations ────────────────────────────────────────────────────────────

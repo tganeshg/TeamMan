@@ -8,10 +8,12 @@ from database import get_db
 from models import Task, Label, TeamMember
 from schemas import TaskCreate, TaskUpdate, TaskOut, TaskDetail, AssignRequest
 
+_TERMINAL = {"SID12", "SID13"}
+
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-_TERMINAL  = {"SID12", "SID13"}           # Closed, Released
+_TERMINAL_SET  = {"SID12", "SID13"}           # Closed, Released
 _PROBLEM   = {"SID07", "SID11"}           # Rework, Reopened
 _WAITING   = {"SID10", "SID14"}           # Waiting, On Hold
 _READY     = {"SID08", "SID09"}           # Ready to Merge / Release
@@ -19,7 +21,7 @@ _READY     = {"SID08", "SID09"}           # Ready to Merge / Release
 
 def compute_color(task: Task) -> str:
     today = date.today()
-    if task.status in _TERMINAL:
+    if task.status in _TERMINAL_SET:
         return "green"
     if task.status in _PROBLEM:
         return "red"
@@ -112,6 +114,8 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     if task_data.get("assignee_id") and task_data.get("priority") is not None:
         _reorder_priorities(db, task_data["assignee_id"], task_data["priority"])
 
+    if task_data.get("status") in _TERMINAL and not task_data.get("closed_at"):
+        task_data["closed_at"] = date.today()
     task = Task(**task_data)
     if label_ids:
         labels = db.query(Label).filter(Label.id.in_(label_ids)).all()
@@ -156,6 +160,13 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
             if task.priority is not None and task.assignee_id:
                 _compact_priorities(db, task.assignee_id, task.priority, task.id)
             _reorder_priorities(db, new_assignee, new_priority, exclude_task_id=task.id)
+
+    # Auto-set closed_at when task transitions to terminal status
+    new_status = data.get("status")
+    if new_status and new_status in _TERMINAL and task.status not in _TERMINAL:
+        data["closed_at"] = date.today()
+    elif new_status and new_status not in _TERMINAL and task.status in _TERMINAL:
+        data["closed_at"] = None  # reopened — clear closed_at
 
     for field, value in data.items():
         setattr(task, field, value)

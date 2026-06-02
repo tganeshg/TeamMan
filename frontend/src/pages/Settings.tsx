@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Row, Col, Card, Form, Button, Badge, Modal, Alert, InputGroup, Spinner } from 'react-bootstrap'
+// Note: releaseDate state removed — managed via Reports page
 import {
   getPortalStatus, savePortalCredentials, testPortalConnection,
   getLabels, createLabel, updateLabel, deleteLabel,
-  getReleaseDate, setReleaseDate,
 } from '../api/client'
 import type { Label } from '../types'
 
@@ -15,10 +15,6 @@ export default function Settings() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null)
   const [portalMsg, setPortalMsg] = useState('')
-
-  const [releaseDate, setReleaseDateState] = useState('')
-  const [releaseSaving, setReleaseSaving] = useState(false)
-  const [releaseMsg, setReleaseMsg] = useState('')
 
   const [labels, setLabels] = useState<Label[]>([])
   const [labelModal, setLabelModal] = useState(false)
@@ -35,7 +31,6 @@ export default function Settings() {
       setConfigured(s.configured)
       if (s.portal_url) setPortalUrl(s.portal_url)
     })
-    getReleaseDate().then(r => setReleaseDateState(r.release_date ?? ''))
     loadLabels()
   }, [])
 
@@ -224,62 +219,18 @@ export default function Settings() {
           </Card>
         </Col>
 
-        {/* Release Date */}
+        {/* Release Date — moved to Reports */}
         <Col xs={12} lg={6}>
           <Card className="border-0 shadow-sm rounded-3 h-100">
             <Card.Header className="bg-white border-bottom fw-semibold d-flex align-items-center gap-2">
               <i className="bi bi-rocket-takeoff text-primary" />
-              Next Ship Release Date
+              Releases
             </Card.Header>
-            <Card.Body>
-              <p className="text-muted small mb-3">
-                Set the target release date. It will appear on the Dashboard as a countdown.
-              </p>
-              <Form.Group className="mb-3">
-                <Form.Label className="small fw-semibold">Release Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  size="sm"
-                  value={releaseDate}
-                  onChange={e => { setReleaseDateState(e.target.value); setReleaseMsg('') }}
-                />
-              </Form.Group>
-              {releaseMsg && (
-                <Alert variant={releaseMsg.includes('saved') ? 'success' : 'danger'} className="py-2 small">
-                  {releaseMsg}
-                </Alert>
-              )}
-              <div className="d-flex gap-2">
-                <Button
-                  variant="primary" size="sm"
-                  disabled={releaseSaving || !releaseDate}
-                  onClick={async () => {
-                    setReleaseSaving(true)
-                    try {
-                      await setReleaseDate(releaseDate || null)
-                      setReleaseMsg('Release date saved.')
-                    } catch {
-                      setReleaseMsg('Save failed.')
-                    } finally {
-                      setReleaseSaving(false)
-                    }
-                  }}
-                >
-                  {releaseSaving ? <Spinner animation="border" size="sm" className="me-1" /> : <i className="bi bi-save me-1" />}
-                  Save
-                </Button>
-                {releaseDate && (
-                  <Button
-                    variant="outline-secondary" size="sm"
-                    onClick={async () => {
-                      await setReleaseDate(null)
-                      setReleaseDateState('')
-                      setReleaseMsg('Release date cleared.')
-                    }}
-                  >
-                    <i className="bi bi-x me-1" />Clear
-                  </Button>
-                )}
+            <Card.Body className="d-flex align-items-center gap-3">
+              <i className="bi bi-bar-chart-line fs-2 text-primary" />
+              <div>
+                <div className="fw-semibold small">Release management has moved to the Reports page.</div>
+                <div className="text-muted small mt-1">Go to <strong>Reports</strong> in the sidebar to create releases, set the active release, and view team performance reports.</div>
               </div>
             </Card.Body>
           </Card>

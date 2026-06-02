@@ -37,6 +37,18 @@ class Label(Base):
     tasks = relationship("Task", secondary=task_labels, back_populates="labels")
 
 
+class Release(Base):
+    __tablename__ = "releases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    release_date = Column(Date, nullable=False)
+    status = Column(String, nullable=False, default="active")  # active | completed
+    created_at = Column(DateTime, default=func.now())
+
+    tasks = relationship("Task", back_populates="release")
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -50,10 +62,13 @@ class Task(Base):
     status = Column(String, nullable=False, default="SID00")
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
+    release_id = Column(Integer, ForeignKey("releases.id", ondelete="SET NULL"), nullable=True)
+    closed_at = Column(Date, nullable=True)  # auto-set when status → SID12/SID13
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     assignee = relationship("TeamMember", back_populates="tasks", foreign_keys=[assignee_id])
+    release = relationship("Release", back_populates="tasks")
     labels = relationship("Label", secondary=task_labels, back_populates="tasks")
     comments = relationship("Comment", back_populates="task", cascade="all, delete-orphan", order_by="Comment.created_at")
     attachments = relationship("Attachment", back_populates="task", cascade="all, delete-orphan")
