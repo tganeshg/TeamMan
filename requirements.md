@@ -2,14 +2,14 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.2 (Phase 1 Complete)
-**Last Updated:** 2026-06-01
+**Version:** 1.3 (Phase 1 Complete)
+**Last Updated:** 2026-06-02
 
 ---
 
 ## Overview
 
-PrimeDesk is a local team and task management application built for the Prime Team project lead. It manages team members, tasks, task relations, and meeting-driven todo threads. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs entirely on the local machine and opens in the browser — no cloud or internet required except for portal fetch.
+PrimeDesk is a local team and task management application built for the Prime Team project lead. It manages team members, tasks, task relations, meeting todo threads, releases, and generates team performance reports. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs entirely on the local machine and opens in the browser — no cloud or internet required except for portal fetch.
 
 ---
 
@@ -20,7 +20,6 @@ PrimeDesk is a local team and task management application built for the Prime Te
 - User enters a Task ID → application auto-fetches: title, description, reporter, severity, portal status
 - API token stored securely using AES encryption (Fernet) in the local SQLite database
 - Manual task entry available for new feature tasks not originating from the portal
-- API token generated from: `your-portal/account_api_token_page.php`
 - Settings page includes a **Test Connection** button to verify the token
 
 ---
@@ -28,18 +27,12 @@ PrimeDesk is a local team and task management application built for the Prime Te
 ## 2. Team Member Management
 
 - Add, edit, and delete team members
-- Each member has:
-  - Full Name
-  - Email (unique)
-  - Hierarchy level: `Lead` | `Senior` | `Junior` | `Intern`
-- Members are stored in the local SQLite database
+- Each member has: Full Name, Email (unique), Hierarchy level (`Lead` | `Senior` | `Junior` | `Intern`)
 - Dashboard shows active task count per member (workload view)
 
 ---
 
 ## 3. Task Properties
-
-Each task has the following fields:
 
 | Field | Description |
 |---|---|
@@ -48,15 +41,16 @@ Each task has the following fields:
 | Description | Full task description |
 | Type | `Bug` (from portal) or `Feature` (manual) |
 | Assignee | Team member assigned to the task |
-| Priority | Integer (1 = highest). Auto-reorders per member on insert |
-| Status | Custom SID00–SID14 status codes (see below) |
+| Priority | Integer (1 = highest). Sequential per member, no gaps allowed |
+| Status | Custom SID00–SID14 status codes |
 | Start Date | Task start date |
 | End Date | Task due date |
+| Release | Which release this task belongs to (optional tag) |
 | Labels | Dynamic user-defined labels (multi-select, filterable) |
 | Color | Auto-computed on every read based on status and date |
 | Comments | Append-only daily progress notes (timestamped, author tagged) |
 | Attachments | One or more files per task (stored locally, downloadable) |
-| Relations | Typed links to other tasks (see Section 16) |
+| Relations | Typed links to other tasks |
 
 ### Task Status Codes
 
@@ -73,20 +67,25 @@ Each task has the following fields:
 
 ---
 
-## 4. Priority Auto-Reordering
+## 4. Priority Rules
 
-- Priority is **per team member** — each member has their own independent priority queue
-- When a new task is assigned priority `N` to a member:
-  - All existing tasks for that member with priority `>= N` are incremented by 1
-  - New task is inserted at priority `N`
-- When a task is deleted: all tasks with priority above the deleted task's priority are decremented
-- When a task is reassigned to a different member: old member's queue is compacted, new member's queue is reordered
+- Priority is **per team member** — two different members can both have a task at priority 1
+- Priority field is **required** when an assignee is selected; cannot save without it
+- The UI shows the valid range (e.g. `1 – 6`) next to the priority field
+- On insert at position K: tasks at K..N shift up by +1
+- On move from K to L (same member):
+  - K → L (move down): tasks in (K, L] shift down by -1
+  - K → L (move up): tasks in [L, K) shift up by +1
+- On delete at K: tasks with priority > K shift down by -1
+- On reassign to different member: old queue is compacted, task inserted at new position
+- System always maintains a clean sequential 1..N order — no gaps, no duplicates
+- Priority out of range is automatically clamped to the valid maximum
 
 ---
 
 ## 5. Color Coding
 
-Color is computed server-side on every task fetch and is never stored statically:
+Color is computed server-side on every task fetch (never stored):
 
 | Condition | Color | Hex |
 |---|---|---|
@@ -97,126 +96,44 @@ Color is computed server-side on every task fetch and is never stored statically
 | Past end date (not terminal) | Red | `#e74a3b` |
 | Due within 2 days (not terminal) | Orange | `#f6c23e` |
 | Default (active, in-progress) | Blue | `#4e73df` |
-| Unclassified | Gray | `#858796` |
 
 ---
 
 ## 6. Labels
 
-- Labels are fully user-defined (name + hex color)
-- Created and managed from the Settings page
-- Multiple labels can be attached to a single task (toggle selection during task create/edit)
-- Labels are reusable across tasks
+- Labels are fully user-defined (name + hex color), created in Settings
+- Multiple labels can be attached to a single task
 - Tasks can be filtered by label
 
 ---
 
-## 7. Filtering
+## 7. Filtering & Sorting
 
-Filter tasks by any combination of:
-- Assignee (team member)
-- Status
-- Task type (Bug / Feature)
-- End date range (from / to)
-- Labels (multi-select)
+Filter tasks by: Assignee, Status, Type, End date range, Labels
+
+Sort by: Priority (default) · Title · Start Date · End Date — direction toggleable
 
 ---
 
-## 8. Sorting / Ordering
+## 8. Comments / Progress Notes
 
-Sort task list by:
-- Priority (default, ascending) — shows per-member priority queue order
-- Task name (A–Z or Z–A)
-- Start date
-- End date
-
-Sort direction toggleable (ascending / descending) via button in filter bar.
+- Append-only comment thread per task
+- Each comment records: content, author ("Project Lead"), timestamp
+- Not deletable — preserved as audit trail
 
 ---
 
-## 9. Comments / Progress Notes
+## 9. File Attachments
 
-- Each task has an append-only comment thread
-- Each comment records: content, author (default "Project Lead"), timestamp
-- Comments are not deletable — preserved as audit trail
-- Displayed in chronological order in the task detail panel (offcanvas)
-- Maximum visible area scrollable (220px height cap)
+- Multiple files per task, stored in `backend/uploads/` with UUID-based filenames
+- Download link available; individual attachments deletable
 
 ---
 
-## 10. File Attachments
+## 10. Task Relations
 
-- Multiple files can be attached per task
-- Files stored in `backend/uploads/` folder with UUID-based filenames
-- Original filename preserved in the database
-- Download link available per attachment
-- Individual attachments can be deleted (removes from disk and DB)
-
----
-
-## 11. Next Ship Release Date
-
-- A release date can be configured from the **Settings** page
-- Displayed as a live countdown badge in the **topbar** on all pages
-- Color-coded:
-  - Green: more than 7 days away
-  - Orange: 7 days or fewer remaining
-  - Red: past due date
-- Shows formatted date + pill label: "5d to go", "Today!", "Overdue by 2d"
-
----
-
-## 12. Todo Threads (Meeting Action Items)
-
-Each thread represents a group of action items tied to a meeting or event:
-
-| Field | Description |
-|---|---|
-| Heading | Thread title (required) |
-| Description | Notes, context, or agenda summary |
-| Meeting | Free-text meeting/event reference (e.g. "Weekly Sync 2025-06-02") |
-| Status | `open` or `done` |
-| Items | Checklist of action items (add, check off, delete) |
-
-- Threads are grouped: **Open** on top, **Completed** below
-- Each thread card shows a progress bar (items done / total)
-- Action items added inline via text input + Enter key or `+` button
-- Marking a thread **Done** moves it to the completed section
-- Thread can be **reopened** from the completed section
-
----
-
-## 13. Cross-Platform
-
-- Runs on **Ubuntu** and **Windows** with identical behavior
-- `start.sh` for Ubuntu — uses Python 3.10 virtualenv
-- `start.bat` for Windows — uses Python venv inside `backend/.venv` to bypass system pip issues
-- Both scripts: create venv → install deps → start backend → start frontend → open browser
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:3000`
-
----
-
-## 14. Dashboard
-
-- Stat cards in order: Total Tasks, **Overdue**, Due Today, Due This Week
-- Tasks by Status: progress bar breakdown with SID code + label + percentage
-- Team Workload table: member name, role, active task count, capacity bar, load label (Low / Medium / High)
-
----
-
-## 15. Authentication (Future — v2)
-
-- Login screen to be added in a later phase
-- Current phase: no authentication, local access only
-
----
-
-## 16. Task Relations
-
-- Tasks can be linked to other tasks with a typed relation
 - Relations are managed in the **Edit Task** modal under the Relations section
-- Relation types:
+- Types:
 
 | Type | Meaning |
 |---|---|
@@ -225,13 +142,82 @@ Each thread represents a group of action items tied to a meeting or event:
 | Child of | This task is a sub-task of another |
 | Blocks | This task must be resolved before the other can proceed |
 | Blocked by | This task is waiting on another task |
-| Related to | General loose connection between tasks |
+| Related to | General loose connection |
 
-- Each relation shown as a color-coded pill with the related task title and portal ID
-- Individual relations can be removed with the × button
-- Duplicate relations between the same task pair are prevented
+- Shown as color-coded pills with × to remove
+- Duplicate relations between the same pair are prevented
 - A task cannot be related to itself
 - For new tasks: save first, then edit to add relations
+
+---
+
+## 11. Release Management
+
+- Releases are created from the **Reports** page
+- Each release has: Name (e.g. `17.60`), Target Ship Date, Status (`active` | `completed`)
+- Only one release is typically active at a time
+- Tasks are manually tagged to a release via the Release dropdown in the Task modal
+- The topbar badge shows the active release name and countdown
+- Releases can be edited (name/date), marked complete, or reopened
+- Completed releases retain their report data permanently
+
+---
+
+## 12. Team Performance Reports
+
+- Accessible from the **Reports** page in the sidebar
+- Select a release from the left panel to view its report
+- Report sections:
+  - **Summary cards**: Total Tasks, Closed, Early, On Time, Late Closed, Open/Overdue, In Progress
+  - **Per-member breakdown table**: one row per member with all counters
+  - **Task detail table**: filterable by member, shows timing badge per task
+- Timing classification:
+  - **Early**: closed more than 2 days before end_date
+  - **On Time**: closed on or before end_date
+  - **Overdue (closed)**: closed after end_date
+  - **Open/Overdue**: not closed, past end_date
+  - **In Progress**: not closed, within deadline
+- `closed_at` is auto-set by the backend when a task moves to SID12/SID13; cleared if reopened
+- Export options:
+  - **PDF**: generated server-side by reportlab — titled "Prime Team Report", same layout as Word
+  - **Word (.docx)**: generated server-side by python-docx — titled "Prime Team Report"
+
+---
+
+## 13. Todo Threads (Meeting Action Items)
+
+| Field | Description |
+|---|---|
+| Heading | Thread title (required) |
+| Description | Notes, context, or agenda summary |
+| Meeting | Free-text meeting/event reference |
+| Status | `open` or `done` |
+| Items | Checklist of action items |
+
+- Open threads on top, Completed below; threads can be reopened
+
+---
+
+## 14. Dashboard
+
+- Stat cards in order: Total Tasks → **Overdue** → Due Today → Due This Week
+- Tasks by Status: SID code + label + progress bar + percentage
+- Team Workload table: member name, role badge, active task count, capacity bar, load badge
+
+---
+
+## 15. Cross-Platform
+
+- `start.sh` for Ubuntu, `start.bat` for Windows
+- Backend runs on port **3001**, frontend on port **3000**
+- `restart_backend.bat` on Windows: kills port 3001 and restarts backend
+
+---
+
+## 16. Authentication (Future — v2)
+
+- Login screen planned for a later phase
+- Current phase: no authentication, local access only
 
 ---
 

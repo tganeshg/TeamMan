@@ -198,6 +198,10 @@ export default function Tasks() {
 
   const handleTaskSubmit = async () => {
     if (!form.title?.trim()) return
+    if (form.assignee_id && !form.priority) {
+      setMantisError('Priority is required when a member is assigned.')
+      return
+    }
     setTaskSaving(true)
     try {
       const payload = {
@@ -495,9 +499,33 @@ export default function Tasks() {
               </Form.Select>
             </Col>
             <Col md={6}>
-              <Form.Label className="small fw-semibold">Priority</Form.Label>
-              <Form.Control size="sm" type="number" min={1} placeholder="1 = highest"
-                value={form.priority ?? ''} onChange={e => setField('priority', e.target.value)} />
+              <Form.Label className="small fw-semibold">
+                Priority {form.assignee_id && <span className="text-danger">*</span>}
+              </Form.Label>
+              {(() => {
+                const memberTasks = tasks.filter(t =>
+                  t.assignee_id === Number(form.assignee_id) &&
+                  t.id !== editingTask?.id &&
+                  t.priority != null
+                )
+                const maxP = memberTasks.length + 1
+                return (
+                  <>
+                    <Form.Control
+                      size="sm" type="number" min={1} max={maxP}
+                      placeholder={form.assignee_id ? `1 – ${maxP}` : '1 = highest'}
+                      value={form.priority ?? ''}
+                      onChange={e => setField('priority', e.target.value)}
+                      isInvalid={!!form.assignee_id && form.priority !== '' && form.priority !== undefined && (Number(form.priority) < 1 || Number(form.priority) > maxP)}
+                    />
+                    {form.assignee_id && (
+                      <Form.Text className="text-muted">
+                        Valid range: 1 – {maxP}. Will be auto-clamped if out of range.
+                      </Form.Text>
+                    )}
+                  </>
+                )
+              })()}
             </Col>
 
             <Col md={6}>

@@ -29,7 +29,7 @@ if errorlevel 1 (
 )
 
 echo [3/4] Starting backend on http://localhost:8000 ...
-start "TeamMan Backend" cmd /k "cd /d "%SCRIPT_DIR%backend" && "%VENV_DIR%\Scripts\uvicorn.exe" main:app --host 0.0.0.0 --port 8000 --reload || (echo. && echo === BACKEND ERROR — window kept open === && pause)"
+start "TeamMan Backend" cmd /k "cd /d "%SCRIPT_DIR%backend" && "%VENV_DIR%\Scripts\uvicorn.exe" main:app --host 0.0.0.0 --port 3001 || (echo. && echo === BACKEND ERROR — window kept open === && pause)"
 
 echo [4/4] Installing and starting frontend on http://localhost:3000 ...
 cd /d "%SCRIPT_DIR%frontend"

@@ -142,6 +142,197 @@ def get_report(release_id: int, db: Session = Depends(get_db)):
     return _build_report(release, db)
 
 
+@router.get("/{release_id}/export/pdf")
+def export_pdf(release_id: int, db: Session = Depends(get_db)):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    )
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    release = db.query(Release).filter(Release.id == release_id).first()
+    if not release:
+        raise HTTPException(status_code=404, detail="Release not found")
+
+    report = _build_report(release, db)
+    buf = io.BytesIO()
+
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=2*cm, rightMargin=2*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+    )
+
+    # ── Colours
+    PRIMARY   = colors.HexColor("#4e73df")
+    SUCCESS   = colors.HexColor("#1cc88a")
+    DANGER    = colors.HexColor("#e74a3b")
+    WARNING   = colors.HexColor("#f6c23e")
+    MUTED     = colors.HexColor("#858796")
+    DARK      = colors.HexColor("#3a3f5c")
+    LIGHT_BG  = colors.HexColor("#f8f9fc")
+    HDR_BG    = colors.HexColor("#4e73df")
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("title", fontSize=18, fontName="Helvetica-Bold",
+                                  textColor=PRIMARY, alignment=TA_CENTER, spaceAfter=4)
+    sub_style   = ParagraphStyle("sub",   fontSize=9,  fontName="Helvetica",
+                                  textColor=MUTED, alignment=TA_CENTER, spaceAfter=2)
+    section_style = ParagraphStyle("sec", fontSize=11, fontName="Helvetica-Bold",
+                                    textColor=DARK, spaceBefore=12, spaceAfter=4)
+    cell_style  = ParagraphStyle("cell",  fontSize=8,  fontName="Helvetica", leading=10)
+    footer_style = ParagraphStyle("footer", fontSize=7, fontName="Helvetica",
+                                   textColor=MUTED, alignment=TA_CENTER, spaceBefore=12)
+
+    def hdr_cell(text):
+        return Paragraph(f"<b>{text}</b>", ParagraphStyle(
+            "hc", fontSize=8, fontName="Helvetica-Bold",
+            textColor=colors.white, alignment=TA_CENTER, leading=10))
+
+    def val_cell(text, align=TA_CENTER, color=DARK):
+        return Paragraph(str(text), ParagraphStyle(
+            "vc", fontSize=8, fontName="Helvetica",
+            textColor=color, alignment=align, leading=10))
+
+    timing_label = {
+        "early": "Early ✓", "on_time": "On Time ✓",
+        "overdue": "Overdue ✗", "in_progress": "In Progress",
+        "open": "Open", "closed": "Closed",
+    }
+    timing_color = {
+        "early": SUCCESS, "on_time": PRIMARY,
+        "overdue": DANGER, "in_progress": WARNING,
+        "open": MUTED, "closed": SUCCESS,
+    }
+
+    elements = []
+
+    # ── Title
+    elements.append(Paragraph("Prime Team Report", title_style))
+    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Paragraph(
+        f"Release: <b>{report.release_name}</b>  |  "
+        f"Target: <b>{report.release_date.strftime('%d %b %Y')}</b>  |  "
+        f"Generated: <b>{report.generated_on.strftime('%d %b %Y')}</b>",
+        sub_style))
+    elements.append(HRFlowable(width="100%", thickness=1, color=PRIMARY, spaceAfter=8))
+
+    # ── Summary
+    elements.append(Paragraph("Summary", section_style))
+    summary_rows = [[
+        hdr_cell("Total Tasks"), hdr_cell("Closed"), hdr_cell("Early"),
+        hdr_cell("On Time"), hdr_cell("Late Closed"), hdr_cell("Open / Overdue"), hdr_cell("In Progress"),
+    ], [
+        val_cell(report.total_tasks),
+        val_cell(report.total_closed),
+        val_cell(report.total_early),
+        val_cell(report.total_on_time),
+        val_cell(report.total_overdue_closed),
+        val_cell(report.total_still_open),
+        val_cell(report.total_in_progress),
+    ]]
+    summary_tbl = Table(summary_rows, colWidths=[2.4*cm]*7)
+    summary_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), HDR_BG),
+        ("BACKGROUND", (0,1), (-1,1), LIGHT_BG),
+        ("GRID",       (0,0), (-1,-1), 0.5, colors.HexColor("#e3e6f0")),
+        ("ALIGN",      (0,0), (-1,-1), "CENTER"),
+        ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [LIGHT_BG, colors.white]),
+        ("TOPPADDING",  (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    elements.append(summary_tbl)
+
+    # ── Per-member breakdown
+    elements.append(Paragraph("Per-Member Breakdown", section_style))
+    member_header = [
+        hdr_cell("Member"), hdr_cell("Role"), hdr_cell("Assigned"),
+        hdr_cell("Closed"), hdr_cell("Early"), hdr_cell("On Time"),
+        hdr_cell("Late Closed"), hdr_cell("Open/OD"), hdr_cell("In Progress"),
+    ]
+    member_data = [member_header]
+    for m in report.members:
+        member_data.append([
+            val_cell(m.member_name, TA_LEFT),
+            val_cell(m.member_role),
+            val_cell(m.total_assigned),
+            val_cell(m.closed),
+            val_cell(m.early,         color=SUCCESS),
+            val_cell(m.on_time,       color=PRIMARY),
+            val_cell(m.overdue_closed, color=DANGER),
+            val_cell(m.still_open,    color=DANGER),
+            val_cell(m.in_progress,   color=WARNING),
+        ])
+    col_w = [3.5*cm, 2*cm, 1.8*cm, 1.8*cm, 1.6*cm, 1.6*cm, 2*cm, 1.8*cm, 2*cm]
+    member_tbl = Table(member_data, colWidths=col_w)
+    member_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), HDR_BG),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.HexColor("#e3e6f0")),
+        ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+        ("ALIGN",         (0,1), (0,-1), "LEFT"),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [LIGHT_BG, colors.white]),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("FONTNAME",      (0,1), (0,-1), "Helvetica-Bold"),
+    ]))
+    elements.append(member_tbl)
+
+    # ── Task details
+    elements.append(Paragraph("Task Details", section_style))
+    task_header = [
+        hdr_cell("ID"), hdr_cell("Title"), hdr_cell("Type"),
+        hdr_cell("Assignee"), hdr_cell("Status"),
+        hdr_cell("Due Date"), hdr_cell("Closed On"), hdr_cell("Timing"),
+    ]
+    task_data = [task_header]
+    for t in report.tasks:
+        tc = timing_color.get(t.timing, MUTED)
+        task_data.append([
+            val_cell(f"#{t.portal_task_id}" if t.portal_task_id else f"#{t.task_id}"),
+            val_cell(t.title, TA_LEFT),
+            val_cell(t.task_type.capitalize()),
+            val_cell(t.assignee_name or "—"),
+            val_cell(t.status, TA_LEFT),
+            val_cell(t.end_date.strftime("%d %b %Y") if t.end_date else "—"),
+            val_cell(t.closed_at.strftime("%d %b %Y") if t.closed_at else "—"),
+            val_cell(timing_label.get(t.timing, t.timing), color=tc),
+        ])
+    task_col_w = [1.5*cm, 5.5*cm, 1.8*cm, 2.5*cm, 3*cm, 2.2*cm, 2.2*cm, 2*cm]
+    task_tbl = Table(task_data, colWidths=task_col_w, repeatRows=1)
+    task_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), HDR_BG),
+        ("GRID",          (0,0), (-1,-1), 0.5, colors.HexColor("#e3e6f0")),
+        ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+        ("ALIGN",         (1,1), (1,-1), "LEFT"),
+        ("ALIGN",         (4,1), (4,-1), "LEFT"),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [LIGHT_BG, colors.white]),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    elements.append(task_tbl)
+
+    # ── Footer
+    elements.append(Paragraph(
+        f"Report generated by PrimeDesk  |  Prime Team  |  {report.generated_on.strftime('%d %b %Y')}",
+        footer_style))
+
+    doc.build(elements)
+    buf.seek(0)
+
+    filename = f"PrimeDesk_Report_{release.name.replace(' ', '_')}_{report.generated_on}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/{release_id}/export/docx")
 def export_docx(release_id: int, db: Session = Depends(get_db)):
     from docx import Document
@@ -165,7 +356,7 @@ def export_docx(release_id: int, db: Session = Depends(get_db)):
     section.right_margin = Inches(1.2)
 
     # ── Title
-    title = doc.add_heading("Team Performance Report", 0)
+    title = doc.add_heading("Prime Team Report", 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = title.runs[0]
     run.font.color.rgb = RGBColor(0x4E, 0x73, 0xDF)

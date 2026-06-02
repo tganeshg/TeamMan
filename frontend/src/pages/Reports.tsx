@@ -3,7 +3,7 @@ import { Row, Col, Card, Button, Badge, Table, Spinner, Modal, Form, Alert } fro
 import dayjs from 'dayjs'
 import {
   getReleases, createRelease, updateRelease, deleteRelease,
-  getReport, exportDocxUrl,
+  getReport, exportDocxUrl, exportPdfUrl,
 } from '../api/client'
 import type { Release, ReleaseReport } from '../types'
 
@@ -24,8 +24,9 @@ export default function Reports() {
   const [filterMember, setFilterMember] = useState('')
   const [loadError, setLoadError] = useState('')
 
-  // New release modal
+  // New / Edit release modal
   const [showModal, setShowModal] = useState(false)
+  const [editingRelease, setEditingRelease] = useState<Release | null>(null)
   const [modalName, setModalName] = useState('')
   const [modalDate, setModalDate] = useState('')
   const [modalSaving, setModalSaving] = useState(false)
@@ -50,18 +51,41 @@ export default function Reports() {
     getReport(id).then(setReport).catch(() => setReport(null)).finally(() => setReportLoading(false))
   }
 
-  const handleCreate = async () => {
+  const openNewModal = () => {
+    setEditingRelease(null)
+    setModalName('')
+    setModalDate('')
+    setModalError('')
+    setShowModal(true)
+  }
+
+  const openEditModal = (r: Release, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingRelease(r)
+    setModalName(r.name)
+    setModalDate(r.release_date)
+    setModalError('')
+    setShowModal(true)
+  }
+
+  const handleSaveModal = async () => {
     if (!modalName.trim() || !modalDate) { setModalError('Name and date are required.'); return }
     setModalSaving(true)
     setModalError('')
     try {
-      const r = await createRelease(modalName.trim(), modalDate)
-      const list = await loadReleases()
-      selectRelease(r.id)
+      if (editingRelease) {
+        await updateRelease(editingRelease.id, { name: modalName.trim(), release_date: modalDate })
+        await loadReleases()
+        if (selectedId === editingRelease.id) selectRelease(editingRelease.id)
+      } else {
+        const r = await createRelease(modalName.trim(), modalDate)
+        const list = await loadReleases()
+        selectRelease(r.id)
+      }
       setShowModal(false)
       setModalName(''); setModalDate('')
     } catch (e: any) {
-      setModalError(e?.response?.data?.detail ?? 'Failed to create release.')
+      setModalError(e?.response?.data?.detail ?? 'Failed to save release.')
     } finally {
       setModalSaving(false)
     }
@@ -88,7 +112,6 @@ export default function Reports() {
     }
   }
 
-  const handlePrint = () => window.print()
 
   const filteredTasks = report?.tasks.filter(t =>
     !filterMember || t.assignee_name === filterMember
@@ -104,7 +127,7 @@ export default function Reports() {
           <Card className="border-0 shadow-sm rounded-3">
             <Card.Header className="bg-white border-bottom fw-semibold d-flex align-items-center justify-content-between">
               <span><i className="bi bi-rocket-takeoff text-primary me-2" />Releases</span>
-              <Button variant="primary" size="sm" onClick={() => { setShowModal(true); setModalError('') }}>
+              <Button variant="primary" size="sm" onClick={openNewModal}>
                 <i className="bi bi-plus" />
               </Button>
             </Card.Header>
@@ -128,9 +151,19 @@ export default function Reports() {
                     <span className="fw-semibold small" style={{ color: selectedId === r.id ? '#4e73df' : '#3a3f5c' }}>
                       {r.name}
                     </span>
-                    <Badge bg={r.status === 'active' ? 'success' : 'secondary'} className="fw-normal" style={{ fontSize: '0.65rem' }}>
-                      {r.status === 'active' ? 'Active' : 'Done'}
-                    </Badge>
+                    <div className="d-flex align-items-center gap-1">
+                      <Badge bg={r.status === 'active' ? 'success' : 'secondary'} className="fw-normal" style={{ fontSize: '0.65rem' }}>
+                        {r.status === 'active' ? 'Active' : 'Done'}
+                      </Badge>
+                      <button
+                        className="btn btn-link btn-sm p-0 ms-1"
+                        style={{ fontSize: '0.75rem', color: '#9e9fb4' }}
+                        title="Edit release"
+                        onClick={e => openEditModal(r, e)}
+                      >
+                        <i className="bi bi-pencil" />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-muted" style={{ fontSize: '0.72rem' }}>
                     {dayjs(r.release_date).format('DD MMM YYYY')}
@@ -177,9 +210,13 @@ export default function Reports() {
                       </div>
                     </div>
                     <div className="d-flex gap-2 flex-wrap">
-                      <Button variant="outline-secondary" size="sm" onClick={handlePrint}>
-                        <i className="bi bi-printer me-1" />PDF
-                      </Button>
+                      <a
+                        href={exportPdfUrl(report.release_id)}
+                        download
+                        className="btn btn-outline-secondary btn-sm"
+                      >
+                        <i className="bi bi-file-earmark-pdf me-1" />PDF
+                      </a>
                       <a
                         href={exportDocxUrl(report.release_id)}
                         download
@@ -356,10 +393,10 @@ export default function Reports() {
         </Col>
       </Row>
 
-      {/* New Release Modal */}
+      {/* New / Edit Release Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered size="sm">
         <Modal.Header closeButton className="border-bottom">
-          <Modal.Title className="fs-6 fw-bold">New Release</Modal.Title>
+          <Modal.Title className="fs-6 fw-bold">{editingRelease ? 'Edit Release' : 'New Release'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {modalError && <Alert variant="danger" className="py-2 small">{modalError}</Alert>}
@@ -384,9 +421,9 @@ export default function Reports() {
         </Modal.Body>
         <Modal.Footer className="border-top">
           <Button variant="light" size="sm" onClick={() => setShowModal(false)}>Cancel</Button>
-          <Button variant="primary" size="sm" onClick={handleCreate} disabled={modalSaving}>
+          <Button variant="primary" size="sm" onClick={handleSaveModal} disabled={modalSaving}>
             {modalSaving ? <Spinner animation="border" size="sm" className="me-1" /> : null}
-            Create
+            {editingRelease ? 'Save' : 'Create'}
           </Button>
         </Modal.Footer>
       </Modal>

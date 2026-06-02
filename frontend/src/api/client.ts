@@ -169,6 +169,9 @@ export const getReport = (releaseId: number) =>
 export const exportDocxUrl = (releaseId: number) =>
   `/api/reports/${releaseId}/export/docx`
 
+export const exportPdfUrl = (releaseId: number) =>
+  `/api/reports/${releaseId}/export/pdf`
+
 // ── Todos ──────────────────────────────────────────────────────
 export interface TodoItem { id: number; thread_id: number; text: string; done: boolean; position: number; created_at: string }
 export interface TodoThread { id: number; heading: string; description?: string; meeting?: string; status: string; created_at: string; updated_at: string; items: TodoItem[] }
