@@ -92,6 +92,11 @@ export default function Todo() {
     load()
   }
 
+  const handleEditItem = async (item: TodoItem, newText: string) => {
+    await updateTodoItem(item.id, { text: newText })
+    load()
+  }
+
   const headerEl = document.getElementById('page-header-actions')
 
   if (loading) return (
@@ -127,7 +132,7 @@ export default function Todo() {
             Open — {open.length}
           </div>
           <Row className="g-3 mb-4">
-            {open.map(t => <Col key={t.id} xs={12} lg={6}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} itemText={itemText} setItemText={setItemText} /></Col>)}
+            {open.map(t => <Col key={t.id} xs={12} lg={6}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} /></Col>)}
           </Row>
         </>
       )}
@@ -139,7 +144,7 @@ export default function Todo() {
             Completed — {done.length}
           </div>
           <Row className="g-3">
-            {done.map(t => <Col key={t.id} xs={12} lg={6}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} itemText={itemText} setItemText={setItemText} /></Col>)}
+            {done.map(t => <Col key={t.id} xs={12} lg={6}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} /></Col>)}
           </Row>
         </>
       )}
@@ -201,15 +206,37 @@ interface CardProps {
   onAddItem: (threadId: number) => void
   onToggleItem: (item: TodoItem) => void
   onDeleteItem: (itemId: number) => void
+  onEditItem: (item: TodoItem, newText: string) => void
   itemText: Record<number, string>
   setItemText: React.Dispatch<React.SetStateAction<Record<number, string>>>
 }
 
-function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onToggleItem, onDeleteItem, itemText, setItemText }: CardProps) {
+function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onToggleItem, onDeleteItem, onEditItem, itemText, setItemText }: CardProps) {
   const isDone = thread.status === 'done'
   const doneCount = thread.items.filter(i => i.done).length
   const total = thread.items.length
   const pct = total ? Math.round((doneCount / total) * 100) : 0
+
+  // Inline item editing state
+  const [editingItemId, setEditingItemId] = useState<number | null>(null)
+  const [editingText, setEditingText] = useState('')
+
+  const startEditItem = (item: TodoItem) => {
+    setEditingItemId(item.id)
+    setEditingText(item.text)
+  }
+
+  const commitEditItem = (item: TodoItem) => {
+    const trimmed = editingText.trim()
+    if (trimmed && trimmed !== item.text) {
+      onEditItem(item, trimmed)
+    }
+    setEditingItemId(null)
+  }
+
+  const cancelEditItem = () => {
+    setEditingItemId(null)
+  }
 
   return (
     <div className="card pd-card h-100" style={{ borderLeft: `4px solid ${STATUS_COLOR[thread.status]}`, borderRadius: '0.35rem' }}>
@@ -272,12 +299,45 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onTog
                 onChange={() => onToggleItem(item)}
                 style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: '#1cc88a' }}
               />
-              <span style={{ flex: 1, fontSize: '0.875rem', color: item.done ? 'var(--text-muted)' : 'var(--text-dark)', textDecoration: item.done ? 'line-through' : 'none' }}>
-                {item.text}
-              </span>
-              <button className="btn btn-sm" style={{ padding: '1px 5px', color: '#dee2e6', lineHeight: 1 }} onClick={() => onDeleteItem(item.id)}>
-                <i className="bi bi-x" />
-              </button>
+
+              {editingItemId === item.id ? (
+                /* ── Inline edit mode ── */
+                <>
+                  <Form.Control
+                    size="sm"
+                    autoFocus
+                    value={editingText}
+                    onChange={e => setEditingText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitEditItem(item)
+                      if (e.key === 'Escape') cancelEditItem()
+                    }}
+                    onBlur={() => commitEditItem(item)}
+                    style={{ flex: 1, fontSize: '0.875rem', padding: '2px 6px' }}
+                  />
+                  <button className="btn btn-sm" title="Save (Enter)" style={{ padding: '1px 5px', color: '#1cc88a', lineHeight: 1 }} onMouseDown={e => { e.preventDefault(); commitEditItem(item) }}>
+                    <i className="bi bi-check-lg" />
+                  </button>
+                  <button className="btn btn-sm" title="Cancel (Esc)" style={{ padding: '1px 5px', color: '#dee2e6', lineHeight: 1 }} onMouseDown={e => { e.preventDefault(); cancelEditItem() }}>
+                    <i className="bi bi-x" />
+                  </button>
+                </>
+              ) : (
+                /* ── Normal display mode ── */
+                <>
+                  <span style={{ flex: 1, fontSize: '0.875rem', color: item.done ? 'var(--text-muted)' : 'var(--text-dark)', textDecoration: item.done ? 'line-through' : 'none' }}>
+                    {item.text}
+                  </span>
+                  {!isDone && (
+                    <button className="btn btn-sm" title="Edit item" style={{ padding: '1px 5px', color: '#b0b3c6', lineHeight: 1 }} onClick={() => startEditItem(item)}>
+                      <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }} />
+                    </button>
+                  )}
+                  <button className="btn btn-sm" style={{ padding: '1px 5px', color: '#dee2e6', lineHeight: 1 }} onClick={() => onDeleteItem(item.id)}>
+                    <i className="bi bi-x" />
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </div>

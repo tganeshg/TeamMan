@@ -13,8 +13,8 @@ if [ ! -d ".venv" ]; then
 fi
 .venv/bin/pip install -r requirements.txt -q
 
-echo "[2/3] Starting backend on http://localhost:8000 ..."
-.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
+echo "[2/3] Starting backend on http://localhost:3001 ..."
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 3001 --reload &
 BACKEND_PID=$!
 
 # Frontend

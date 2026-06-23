@@ -19,18 +19,22 @@ def get_dashboard(db: Session = Depends(get_db)):
         .group_by(Task.status)
         .all()
     )
+    _terminal = ["SID12", "SID13"]
     due_today = db.query(func.count(Task.id)).filter(
         Task.end_date == today,
-        Task.status != "completed",
+        Task.status.notin_(_terminal),
     ).scalar()
     due_this_week = db.query(func.count(Task.id)).filter(
         Task.end_date >= today,
         Task.end_date <= today + timedelta(days=7),
-        Task.status != "completed",
+        Task.status.notin_(_terminal),
     ).scalar()
     overdue = db.query(func.count(Task.id)).filter(
         Task.end_date < today,
-        Task.status != "completed",
+        Task.status.notin_(_terminal),
+    ).scalar()
+    closed = db.query(func.count(Task.id)).filter(
+        Task.status.in_(["SID12", "SID13"]),
     ).scalar()
 
     members = db.query(TeamMember).all()
@@ -38,7 +42,7 @@ def get_dashboard(db: Session = Depends(get_db)):
     for m in members:
         count = db.query(func.count(Task.id)).filter(
             Task.assignee_id == m.id,
-            Task.status != "completed",
+            Task.status.notin_(["SID12", "SID13"]),
         ).scalar()
         workload.append({"id": m.id, "name": m.name, "role": m.role, "active_tasks": count})
 
@@ -48,5 +52,6 @@ def get_dashboard(db: Session = Depends(get_db)):
         "due_today": due_today,
         "due_this_week": due_this_week,
         "overdue": overdue,
+        "closed": closed,
         "workload": workload,
     }

@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.3 (Phase 1 Complete)
-**Last Updated:** 2026-06-02
+**Version:** 1.4 (Phase 1 Complete)
+**Last Updated:** 2026-06-23
 
 ---
 
@@ -145,14 +145,15 @@ TeamMan/
 ### Stat Card Order (Dashboard)
 
 1. Total Tasks (blue)
-2. Overdue (red)
-3. Due Today (yellow)
-4. Due This Week (cyan)
+2. Closed (green)
+3. Overdue (red)
+4. Due Today (yellow)
+5. Due This Week (cyan)
 
 ### Pages
 
 #### Tasks
-- Filter bar + sortable table
+- Filter bar + sortable table; label-based filter (replaces start-date filter)
 - Edit modal: all fields including Release dropdown and Relations section
 - Detail offcanvas: meta, labels, description, comments, attachments
 
@@ -161,10 +162,17 @@ TeamMan/
 - Right panel: summary cards + per-member table + task detail table (filterable by member)
 - Header buttons: PDF download, Word download, Mark Complete / Reopen, Delete
 
+#### Topbar
+- Live search bar: debounced (300ms), searches by task title or portal bug ID (`ilike`), shows up to 8 results in dropdown, clicking a result navigates to Tasks page and opens that task's detail panel
+- Release badges: all active releases rendered as countdown badges (overdue = red, ≤7 days = yellow, healthy = green)
+
+#### Todo
+- Checklist items support inline editing: click pencil icon → input field with current text; save on Enter/blur/✓, cancel on Escape/✗
+
 #### Settings
 - Portal credentials (Mantis URL + API token)
 - Labels management
-- Releases pointer (managed in Reports page)
+- Releases section removed (managed in Reports page)
 
 ---
 
@@ -335,8 +343,10 @@ Both exports generate the same document structure:
 | Color computed at read time, not stored | Stays accurate as dates change without scheduled jobs |
 | SQLite (not PostgreSQL) | Single-user local app, zero-config requirement |
 | Notification / mail icons hidden in topbar | Reserved for future use |
-| Dashboard stat order: Total → Overdue → Due Today → Due This Week | Most urgent items surfaced first |
+| Dashboard stat order: Total → Closed → Overdue → Due Today → Due This Week | Closed surfaced for quick progress visibility alongside urgency |
 | Report titled "Prime Team Report" | Project lead preference |
 | PDF generated server-side via reportlab | Browser print captured entire UI; server PDF matches Word layout |
 | Relations stored as directed pairs | Simple to query; both directions fetched and merged at API layer |
 | No login screen in v1 | Deferred to v2 |
+| Dashboard uses `Task.status.notin_(["SID12","SID13"])` | Old `!= "completed"` string never matched SID codes; caused empty Tasks by Status and Team Workload sections |
+| Topbar search uses backend `ilike` with 300ms debounce | Avoids per-keystroke API calls; search covers both `title` and `portal_task_id` columns |

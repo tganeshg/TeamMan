@@ -10,16 +10,16 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 
 | Feature | Description |
 |---|---|
-| **Dashboard** | Stat cards (Total / Overdue / Due Today / Due This Week), task-by-status breakdown, team workload view |
+| **Dashboard** | Stat cards (Total / Closed / Overdue / Due Today / Due This Week), task-by-status breakdown, team workload view |
 | **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, labels, comments, attachments |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |
 | **Team Management** | Add/edit/delete members with role hierarchy (Lead / Senior / Junior / Intern) |
-| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress |
+| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress; inline edit for individual checklist items |
 | **Release Management** | Create and manage releases with active/completed status; topbar badge shows active release countdown |
 | **Performance Reports** | Per-release team report: summary stats, per-member breakdown, task detail table; export as PDF or Word |
 | **Labels** | User-defined color labels, attachable to tasks, filterable |
-| **Settings** | Portal credentials, label management |
+| **Settings** | Portal credentials, label management (release management is in Reports page) |
 
 ---
 
@@ -207,9 +207,13 @@ TeamMan/
 - Task relations (Duplicate / Parent / Child / Blocks / Blocked By / Related To)
 - Mantis portal integration
 - Team member hierarchy
-- Todo threads with meeting references
+- Todo threads with meeting references and inline checklist item editing
 - SB Admin 2 theme
-- Release management with active/completed status
+- Release management with active/completed status; multiple active release badges in topbar
 - Performance reports with PDF and Word export
+- Live topbar search by task title or bug ID (debounced, opens task detail on click)
+- Dashboard: Closed stat card added; Tasks by Status and Team Workload use SID status codes correctly
+- Tasks filter bar: label-based filter replaces start-date filter
+- Settings: removed stale "Release management moved" notice
 
 > Authentication (login screen) is planned for Phase 2.

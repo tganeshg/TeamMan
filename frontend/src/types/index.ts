@@ -79,6 +79,7 @@ export interface DashboardData {
   due_today: number
   due_this_week: number
   overdue: number
+  closed: number
   workload: { id: number; name: string; role: string; active_tasks: number }[]
 }
 
@@ -156,4 +157,5 @@ export interface TaskFilters {
   end_date_to?: string
   sort_by?: string
   sort_order?: 'asc' | 'desc'
+  search?: string
 }

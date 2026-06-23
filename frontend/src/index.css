@@ -321,6 +321,8 @@ body {
 .sba-card-warning  { border-left-color: var(--warning) !important; }
 .sba-card-danger   { border-left-color: var(--danger) !important; }
 
+.sba-card-success .sba-card-label { color: var(--success); }
+
 .sba-card-label {
   font-size: 0.75rem;
   font-weight: 700;

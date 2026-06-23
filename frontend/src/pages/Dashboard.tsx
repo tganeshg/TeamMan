@@ -35,10 +35,11 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const STAT_CARDS = [
-  { key: 'total',    label: 'Total Tasks',     icon: 'bi-list-check',               variant: 'sba-card-primary' },
-  { key: 'overdue',  label: 'Overdue',         icon: 'bi-exclamation-triangle-fill', variant: 'sba-card-danger'  },
+  { key: 'total',     label: 'Total Tasks',    icon: 'bi-list-check',                variant: 'sba-card-primary' },
+  { key: 'closed',    label: 'Closed',         icon: 'bi-check-circle-fill',         variant: 'sba-card-success' },
+  { key: 'overdue',   label: 'Overdue',        icon: 'bi-exclamation-triangle-fill', variant: 'sba-card-danger'  },
   { key: 'due_today', label: 'Due Today',      icon: 'bi-clock-history',             variant: 'sba-card-warning' },
-  { key: 'due_week', label: 'Due This Week',   icon: 'bi-calendar-week-fill',        variant: 'sba-card-info'    },
+  { key: 'due_week',  label: 'Due This Week',  icon: 'bi-calendar-week-fill',        variant: 'sba-card-info'    },
 ]
 
 export default function Dashboard() {
@@ -55,13 +56,20 @@ export default function Dashboard() {
     </div>
   )
 
-  const d = data!
+  if (!data) return (
+    <div className="alert alert-danger">Failed to load dashboard data. Please refresh.</div>
+  )
+
+  const d = data
   const values: Record<string, number> = {
-    total: d.total_tasks,
-    due_today: d.due_today,
-    overdue: d.overdue,
-    due_week: d.due_this_week,
+    total: d.total_tasks ?? 0,
+    closed: d.closed ?? 0,
+    due_today: d.due_today ?? 0,
+    overdue: d.overdue ?? 0,
+    due_week: d.due_this_week ?? 0,
   }
+  const byStatus = d.by_status ?? {}
+  const workload = d.workload ?? []
   const total = d.total_tasks || 1
 
   return (
@@ -69,7 +77,7 @@ export default function Dashboard() {
       {/* Stat Cards — SB Admin 2 border-left style */}
       <Row className="g-3 mb-4">
         {STAT_CARDS.map(card => (
-          <Col key={card.key} xs={12} sm={6} xl={3}>
+          <Col key={card.key} xs={12} sm={6} lg={4} xl={true}>
             <div className={`card sba-card ${card.variant} h-100`}>
               <div className="card-body">
                 <div className="d-flex align-items-center justify-content-between">
@@ -95,14 +103,14 @@ export default function Dashboard() {
                 Tasks by Status
               </span>
               <span className="badge" style={{ background: 'var(--primary)', color: '#fff' }}>
-                {d.total_tasks} total
+                {d.total_tasks ?? 0} total
               </span>
             </div>
             <div className="card-body">
-              {Object.entries(d.by_status).length === 0 && (
+              {Object.entries(byStatus).length === 0 && (
                 <p className="text-muted">No tasks yet.</p>
               )}
-              {Object.entries(d.by_status).map(([status, count]) => (
+              {Object.entries(byStatus).map(([status, count]) => (
                 <div key={status} className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <div className="d-flex align-items-center gap-2">
@@ -159,7 +167,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {d.workload.map(w => {
+                  {workload.map(w => {
                     const pct = Math.min(w.active_tasks * 10, 100)
                     const loadColor = pct > 70 ? '#e74a3b' : pct > 40 ? '#f6c23e' : '#1cc88a'
                     const loadLabel = pct > 70 ? 'High' : pct > 40 ? 'Medium' : 'Low'
@@ -212,7 +220,7 @@ export default function Dashboard() {
                       </tr>
                     )
                   })}
-                  {d.workload.length === 0 && (
+                  {workload.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center text-muted py-5">
                         <i className="bi bi-people fs-2 d-block mb-2" />

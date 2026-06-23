@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import {
   Table, Button, Badge, Modal, Form, Row, Col,
   Offcanvas, Spinner, Alert, InputGroup,
@@ -95,6 +96,7 @@ function PriorityDot({ p }: { p: number | null }) {
 }
 
 export default function Tasks() {
+  const routeLocation = useLocation()
   const [tasks, setTasks] = useState<Task[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [labels, setLabels] = useState<Label[]>([])
@@ -136,6 +138,15 @@ export default function Tasks() {
     getLabels().then(setLabels)
     getReleases().then(setReleases)
   }, [])
+
+  // Open task from topbar search result
+  useEffect(() => {
+    const state = routeLocation.state as { openTaskId?: number } | null
+    if (state?.openTaskId) {
+      openDetail({ id: state.openTaskId } as Task)
+      window.history.replaceState({}, '')  // clear state so refresh doesn't re-open
+    }
+  }, [routeLocation.state])
 
   const openDetail = async (task: Task) => {
     setShowDetail(true)
@@ -313,19 +324,22 @@ export default function Tasks() {
               </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Control size="sm" type="date" placeholder="End from"
-                onChange={e => setFilters(f => ({ ...f, end_date_from: e.target.value || undefined }))} />
+              <Form.Select size="sm" onChange={e => setFilters(f => ({ ...f, label_ids: e.target.value ? [Number(e.target.value)] : undefined }))}>
+                <option value="">All Labels</option>
+                {labels.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Control size="sm" type="date" placeholder="End to"
+              <Form.Control size="sm" type="date" placeholder="Due by"
                 onChange={e => setFilters(f => ({ ...f, end_date_to: e.target.value || undefined }))} />
             </Col>
             <Col xs="auto">
               <Form.Select size="sm" value={filters.sort_by} onChange={e => setFilters(f => ({ ...f, sort_by: e.target.value }))}>
                 <option value="priority">Priority</option>
                 <option value="title">Title</option>
-                <option value="start_date">Start Date</option>
-                <option value="end_date">End Date</option>
+                <option value="end_date">Due Date</option>
               </Form.Select>
             </Col>
             <Col xs="auto">

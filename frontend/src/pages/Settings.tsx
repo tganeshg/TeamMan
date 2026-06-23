@@ -219,23 +219,6 @@ export default function Settings() {
           </Card>
         </Col>
 
-        {/* Release Date — moved to Reports */}
-        <Col xs={12} lg={6}>
-          <Card className="border-0 shadow-sm rounded-3 h-100">
-            <Card.Header className="bg-white border-bottom fw-semibold d-flex align-items-center gap-2">
-              <i className="bi bi-rocket-takeoff text-primary" />
-              Releases
-            </Card.Header>
-            <Card.Body className="d-flex align-items-center gap-3">
-              <i className="bi bi-bar-chart-line fs-2 text-primary" />
-              <div>
-                <div className="fw-semibold small">Release management has moved to the Reports page.</div>
-                <div className="text-muted small mt-1">Go to <strong>Reports</strong> in the sidebar to create releases, set the active release, and view team performance reports.</div>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
         {/* About */}
         <Col xs={12} lg={6}>
           <Card className="border-0 shadow-sm rounded-3 h-100">

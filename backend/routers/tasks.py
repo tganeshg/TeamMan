@@ -103,6 +103,7 @@ def list_tasks(
     end_date_to: Optional[date] = Query(None),
     sort_by: str = Query("priority"),
     sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels))
@@ -113,6 +114,11 @@ def list_tasks(
     if start_date_to:   q = q.filter(Task.start_date <= start_date_to)
     if end_date_from:   q = q.filter(Task.end_date >= end_date_from)
     if end_date_to:     q = q.filter(Task.end_date <= end_date_to)
+    if search:
+        kw = f"%{search.strip()}%"
+        q = q.filter(
+            Task.title.ilike(kw) | Task.portal_task_id.ilike(kw)
+        )
     if label_ids:
         ids = [int(i) for i in label_ids.split(",") if i.strip().isdigit()]
         if ids:
