@@ -35,11 +35,11 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const STAT_CARDS = [
-  { key: 'total',     label: 'Total Tasks',    icon: 'bi-list-check',                variant: 'sba-card-primary' },
-  { key: 'closed',    label: 'Closed',         icon: 'bi-check-circle-fill',         variant: 'sba-card-success' },
-  { key: 'overdue',   label: 'Overdue',        icon: 'bi-exclamation-triangle-fill', variant: 'sba-card-danger'  },
-  { key: 'due_today', label: 'Due Today',      icon: 'bi-clock-history',             variant: 'sba-card-warning' },
-  { key: 'due_week',  label: 'Due This Week',  icon: 'bi-calendar-week-fill',        variant: 'sba-card-info'    },
+  { key: 'total',     label: 'Total Tasks',   icon: 'bi-list-check',                color: '#fff', bg: '#033C73' },
+  { key: 'closed',    label: 'Closed',        icon: 'bi-check-circle-fill',         color: '#fff', bg: '#73A839' },
+  { key: 'overdue',   label: 'Overdue',       icon: 'bi-exclamation-triangle-fill', color: '#fff', bg: '#C71C22' },
+  { key: 'due_today', label: 'Due Today',     icon: 'bi-clock-history',             color: '#fff', bg: '#DD5600' },
+  { key: 'due_week',  label: 'Due This Week', icon: 'bi-calendar-week-fill',        color: '#fff', bg: '#2FA4E7' },
 ]
 
 export default function Dashboard() {
@@ -74,18 +74,20 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Stat Cards — SB Admin 2 border-left style */}
+      {/* Stat Cards — ArchitectUI style */}
       <Row className="g-3 mb-4">
         {STAT_CARDS.map(card => (
           <Col key={card.key} xs={12} sm={6} lg={4} xl={true}>
-            <div className={`card sba-card ${card.variant} h-100`}>
-              <div className="card-body">
-                <div className="d-flex align-items-center justify-content-between">
-                  <div>
-                    <div className="sba-card-label mb-1">{card.label}</div>
-                    <div className="sba-card-value">{values[card.key]}</div>
+            <div className="card arch-stat-card h-100">
+              <div className="card-body py-3 px-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="arch-stat-icon" style={{ background: card.bg, color: card.color }}>
+                    <i className={`bi ${card.icon}`} />
                   </div>
-                  <i className={`bi ${card.icon} sba-card-icon`} />
+                  <div>
+                    <div className="arch-stat-label">{card.label}</div>
+                    <div className="arch-stat-value">{values[card.key]}</div>
+                  </div>
                 </div>
               </div>
             </div>

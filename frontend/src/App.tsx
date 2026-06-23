@@ -150,8 +150,15 @@ export default function App() {
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside className="pd-sidebar">
         <div className="pd-sidebar-brand">
-          <div className="pd-brand-icon">
-            <i className="bi bi-kanban-fill" style={{ fontSize: '1.2rem' }} />
+          <div className="pd-brand-icon" style={{
+            width: 32, height: 32,
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '0.25rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <i className="bi bi-kanban-fill" style={{ fontSize: '1rem', color: '#fff' }} />
           </div>
           <div>
             <div className="pd-brand-name">PrimeDesk</div>
@@ -188,7 +195,7 @@ export default function App() {
           <div className="pd-sidebar-user">
             <div className="pd-sidebar-avatar">PL</div>
             <div>
-              <div style={{ color: '#fff', fontSize: '0.88rem', fontWeight: 700 }}>Project Lead</div>
+              <div style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600 }}>Project Lead</div>
               <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem' }}>Administrator</div>
             </div>
           </div>
