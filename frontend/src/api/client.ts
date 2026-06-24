@@ -81,6 +81,7 @@ export const updateTask = (id: number, data: Partial<{
   assignee_id: number
   priority: number
   label_ids: number[]
+  release_id: number | null
 }>) => api.put<Task>(`/tasks/${id}`, data).then(r => r.data)
 
 export const deleteTask = (id: number) =>

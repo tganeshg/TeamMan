@@ -131,9 +131,11 @@ export default function Tasks() {
   const [relSaving, setRelSaving] = useState(false)
 
   // Inline editing state
-  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' } | null>(null)
+  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' } | null>(null)
   const [inlineValue, setInlineValue] = useState<any>(null)
   const inlineRef = useRef<HTMLDivElement>(null)
+  const inlineEditRef = useRef<typeof inlineEdit>(null)
+  const inlineValueRef = useRef<any>(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -142,8 +144,11 @@ export default function Tasks() {
 
   useEffect(() => { load() }, [load])
 
+  const tasksRef = useRef<Task[]>([])
+  useEffect(() => { tasksRef.current = tasks }, [tasks])
+
   const quickUpdate = async (taskId: number, patch: Record<string, any>) => {
-    const task = tasks.find(t => t.id === taskId)!
+    const task = tasksRef.current.find(t => t.id === taskId)!
     await updateTask(taskId, {
       title: task.title,
       task_type: task.task_type,
@@ -153,26 +158,44 @@ export default function Tasks() {
       priority: task.priority ?? undefined,
       end_date: task.end_date ?? undefined,
       start_date: task.start_date ?? undefined,
+      release_id: task.release_id ?? null,
       ...patch,
     })
     load()
   }
 
-  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels', currentValue: any) => {
+  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title', currentValue: any) => {
+    inlineEditRef.current = { taskId, field }
+    inlineValueRef.current = currentValue
     setInlineEdit({ taskId, field })
     setInlineValue(currentValue)
   }
 
   const closeInline = () => {
+    inlineEditRef.current = null
+    inlineValueRef.current = null
     setInlineEdit(null)
     setInlineValue(null)
   }
 
-  // Close inline editor on outside click
+  // Close inline editor on outside click; auto-save due_date
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
       if (inlineRef.current && !inlineRef.current.contains(e.target as Node)) {
+        const edit = inlineEditRef.current
+        const val = inlineValueRef.current
         closeInline()
+        if (edit?.field === 'title') {
+          const trimmed = (val as string)?.trim()
+          if (trimmed) quickUpdate(edit.taskId, { title: trimmed })
+        } else if (edit?.field === 'due_date') {
+          quickUpdate(edit.taskId, { end_date: val || undefined })
+        } else if (edit?.field === 'labels') {
+          quickUpdate(edit.taskId, { label_ids: val as number[] ?? [] })
+        } else if (edit?.field === 'priority') {
+          const task = tasksRef.current.find(t => t.id === edit.taskId)
+          if (task?.assignee) quickUpdate(edit.taskId, { priority: Number(val), assignee_id: task.assignee.id })
+        }
       }
     }
     if (inlineEdit) {
@@ -436,13 +459,12 @@ export default function Tasks() {
               <thead>
                 <tr>
                   <th className="ps-3" style={{ width: 50 }}>P#</th>
-                  <th style={{ width: 12 }}></th>
                   <th style={{ width: 80 }}>ID</th>
                   <th>Title</th>
                   <th style={{ width: 90 }}>Type</th>
                   <th style={{ width: 150 }}>Assignee</th>
                   <th style={{ width: 130 }}>Status</th>
-                  <th style={{ width: 110 }}>Due Date</th>
+                  <th style={{ width: 145 }}>Due Date</th>
                   <th>Labels</th>
                   <th style={{ width: 80 }}></th>
                 </tr>
@@ -454,13 +476,33 @@ export default function Tasks() {
                     className={task.color === 'red' ? 'row-overdue' : ''}
                     onClick={() => openDetail(task)}
                   >
-                    <td className="ps-3"><PriorityDot p={task.priority} /></td>
-                    <td>
-                      <span
-                        className="color-dot"
-                        style={{ background: COLOR_HEX[task.color] ?? '#adb5bd' }}
-                        title={STATUS_LABEL[task.status]}
-                      />
+                    {/* Priority — inline editable */}
+                    <td className="ps-3" style={{ position: 'relative' }}
+                      onClick={e => { e.stopPropagation(); if (task.assignee) openInline(task.id, 'priority', task.priority ?? 1) }}
+                    >
+                      {inlineEdit?.taskId === task.id && inlineEdit?.field === ('priority') ? (
+                        <div ref={inlineRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '4px 6px', top: 0, left: 0, width: 70 }}>
+                          <Form.Control
+                            type="number"
+                            size="sm"
+                            autoFocus
+                            min={1}
+                            value={inlineValue ?? task.priority ?? 1}
+                            onChange={e => { setInlineValue(Number(e.target.value)); inlineValueRef.current = Number(e.target.value) }}
+                            onKeyDown={async e => {
+                              if (e.key === 'Escape') { closeInline(); return }
+                              if (e.key === 'Enter') {
+                                const val = inlineValue ?? task.priority
+                                closeInline()
+                                await quickUpdate(task.id, { priority: Number(val), assignee_id: task.assignee?.id })
+                              }
+                            }}
+                            style={{ width: 58, textAlign: 'center', padding: '2px 4px' }}
+                          />
+                        </div>
+                      ) : (
+                        <PriorityDot p={task.priority} />
+                      )}
                     </td>
                     <td>
                       {task.portal_task_id
@@ -471,7 +513,36 @@ export default function Tasks() {
                             : <Badge bg="secondary" className="fw-normal">#{task.portal_task_id}</Badge>)
                         : <span className="text-muted">—</span>}
                     </td>
-                    <td className="fw-medium text-primary" style={{ cursor: 'pointer' }}>{task.title}</td>
+                    {/* Title — inline editable for feature tasks only */}
+                    <td className="fw-medium text-primary" style={{ position: 'relative', cursor: 'pointer' }}
+                      onClick={e => {
+                        if (task.task_type === 'feature') {
+                          e.stopPropagation()
+                          openInline(task.id, 'title', task.title)
+                        }
+                      }}
+                    >
+                      {inlineEdit?.taskId === task.id && inlineEdit?.field === ('title') ? (
+                        <div ref={inlineRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', zIndex: 100, top: 0, left: 0, right: 0 }}>
+                          <Form.Control
+                            size="sm"
+                            autoFocus
+                            value={inlineValue ?? task.title}
+                            onChange={e => { setInlineValue(e.target.value); inlineValueRef.current = e.target.value }}
+                            onKeyDown={async e => {
+                              if (e.key === 'Escape') { closeInline(); return }
+                              if (e.key === 'Enter') {
+                                const val = inlineValue?.trim() || task.title
+                                closeInline()
+                                await quickUpdate(task.id, { title: val })
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        task.title
+                      )}
+                    </td>
                     <td>
                       <Badge bg={task.task_type === 'bug' ? 'danger' : 'info'} className="fw-normal">
                         {task.task_type === 'bug' ? '🐛 Bug' : '✨ Feature'}
@@ -479,7 +550,7 @@ export default function Tasks() {
                     </td>
                     {/* Assignee — inline editable */}
                     <td
-                      style={{ position: 'relative', cursor: 'pointer' }}
+                      style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); openInline(task.id, 'assignee', task.assignee?.id ?? '') }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'assignee' ? (
@@ -487,6 +558,7 @@ export default function Tasks() {
                           <Form.Select
                             size="sm"
                             autoFocus
+                            className="inline-edit-select"
                             defaultValue={task.assignee?.id ?? ''}
                             onChange={async e => {
                               const val = e.target.value
@@ -507,14 +579,13 @@ export default function Tasks() {
                               ? <>{task.assignee.name} <Badge bg={ROLE_VARIANT[task.assignee.role] ?? 'secondary'} className="fw-normal" style={{ fontSize: '0.65rem' }}>{task.assignee.role}</Badge></>
                               : <span className="text-muted fst-italic">Unassigned</span>}
                           </span>
-                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
 
                     {/* Status — inline editable */}
                     <td
-                      style={{ position: 'relative', cursor: 'pointer' }}
+                      style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); openInline(task.id, 'status', task.status) }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'status' ? (
@@ -522,6 +593,7 @@ export default function Tasks() {
                           <Form.Select
                             size="sm"
                             autoFocus
+                            className="inline-edit-select"
                             defaultValue={task.status}
                             onChange={async e => {
                               const val = e.target.value
@@ -546,14 +618,13 @@ export default function Tasks() {
                           >
                             {STATUS_LABEL[task.status]}
                           </span>
-                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
 
                     {/* Due Date — inline editable */}
                     <td
-                      style={{ position: 'relative', cursor: 'pointer' }}
+                      style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); openInline(task.id, 'due_date', task.end_date ?? '') }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'due_date' ? (
@@ -562,41 +633,45 @@ export default function Tasks() {
                             type="date"
                             size="sm"
                             autoFocus
-                            defaultValue={task.end_date ?? ''}
-                            onBlur={async e => {
-                              const val = e.target.value
-                              closeInline()
-                              await quickUpdate(task.id, { end_date: val || undefined })
+                            value={inlineValue ?? task.end_date ?? ''}
+                            onChange={e => { setInlineValue(e.target.value); inlineValueRef.current = e.target.value }}
+                            onKeyDown={async e => {
+                              if (e.key === 'Escape') { closeInline(); return }
+                              if (e.key === 'Enter') {
+                                const val = (e.target as HTMLInputElement).value
+                                closeInline()
+                                await quickUpdate(task.id, { end_date: val || undefined })
+                              }
                             }}
-                            onKeyDown={e => { if (e.key === 'Escape') closeInline() }}
                           />
                         </div>
                       ) : (
                         <span className="inline-editable-cell">
-                          <span style={{ color: task.color === 'red' && task.end_date ? '#dc3545' : undefined }}>
+                          <span style={{ color: task.color === 'red' && task.end_date ? '#dc3545' : undefined, whiteSpace: 'nowrap' }}>
                             {task.end_date ? dayjs(task.end_date).format('DD MMM YYYY') : '—'}
                           </span>
-                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
 
                     {/* Labels — inline editable */}
                     <td
-                      style={{ position: 'relative', cursor: 'pointer' }}
+                      style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); openInline(task.id, 'labels', task.labels.map(l => l.id)) }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'labels' ? (
-                        <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, top: 0, left: 0 }}>
-                          <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                        <div ref={inlineRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', display: 'inline-block', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '6px 8px', top: 0, left: 0 }}>
+                          <div style={{ maxHeight: 180, overflowY: 'auto', whiteSpace: 'nowrap' }}>
                             {labels.map(l => {
                               const checked = (inlineValue as number[] ?? []).includes(l.id)
                               return (
-                                <div key={l.id} className="d-flex align-items-center gap-2 mb-1" style={{ cursor: 'pointer' }}
+                                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
                                   onMouseDown={e => e.preventDefault()}
                                   onClick={() => {
                                     const current: number[] = inlineValue ?? []
-                                    setInlineValue(checked ? current.filter(x => x !== l.id) : [...current, l.id])
+                                    const next = checked ? current.filter(x => x !== l.id) : [...current, l.id]
+                                    setInlineValue(next)
+                                    inlineValueRef.current = next
                                   }}
                                 >
                                   <input type="checkbox" readOnly checked={checked} style={{ accentColor: l.color }} />
@@ -606,47 +681,34 @@ export default function Tasks() {
                             })}
                             {labels.length === 0 && <small className="text-muted">No labels.</small>}
                           </div>
-                          <div className="d-flex gap-1 mt-2">
-                            <button
-                              className="btn btn-sm btn-primary py-0"
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={async () => {
-                                const ids = inlineValue as number[] ?? []
-                                closeInline()
-                                await quickUpdate(task.id, { label_ids: ids })
-                              }}
-                            >Save</button>
-                            <button
-                              className="btn btn-sm btn-light py-0"
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={closeInline}
-                            >Cancel</button>
-                          </div>
                         </div>
                       ) : (
                         <span className="inline-editable-cell">
-                          {task.labels.map(l => (
-                            <span
-                              key={l.id}
-                              className="badge me-1"
-                              style={{ background: l.color, fontSize: '0.7rem', fontWeight: 500 }}
-                            >
-                              {l.name}
-                            </span>
-                          ))}
-                          {task.labels.length === 0 && <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>None</span>}
-                          <span className="inline-edit-hint" title="Click to edit">✏</span>
+                          <span>
+                            {task.labels.map(l => (
+                              <span
+                                key={l.id}
+                                className="badge me-1"
+                                style={{ background: l.color, fontSize: '0.7rem', fontWeight: 500 }}
+                              >
+                                {l.name}
+                              </span>
+                            ))}
+                            {task.labels.length === 0 && <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>—</span>}
+                          </span>
                         </span>
                       )}
                     </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <Button variant="outline-secondary" size="sm" className="me-1 py-0"
+                    <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                      <Button variant="outline-secondary" size="sm" className="me-1"
+                        style={{ padding: '1px 6px', lineHeight: 1 }}
                         onClick={() => openEdit(task)}>
-                        <i className="bi bi-pencil" />
+                        <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }} />
                       </Button>
-                      <Button variant="outline-danger" size="sm" className="py-0"
+                      <Button variant="outline-danger" size="sm"
+                        style={{ padding: '1px 6px', lineHeight: 1 }}
                         onClick={() => setDeleteConfirmId(task.id)}>
-                        <i className="bi bi-trash" />
+                        <i className="bi bi-trash" style={{ fontSize: '0.75rem' }} />
                       </Button>
                     </td>
                   </tr>
