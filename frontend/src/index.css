@@ -827,8 +827,14 @@ body[data-theme="dark"] .alert-danger {
 
 /* Inline editing hint */
 .inline-editable-cell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.inline-editable-cell > *:first-child {
+  flex: 1;
+  min-width: 0;
 }
 .inline-edit-hint {
   opacity: 0;
@@ -836,6 +842,8 @@ body[data-theme="dark"] .alert-danger {
   color: var(--bs-secondary-color, #6c757d);
   transition: opacity 0.15s;
   pointer-events: none;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 td:hover .inline-edit-hint {
   opacity: 1;

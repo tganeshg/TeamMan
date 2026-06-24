@@ -502,10 +502,12 @@ export default function Tasks() {
                         </div>
                       ) : (
                         <span className="inline-editable-cell">
-                          {task.assignee
-                            ? <>{task.assignee.name} <Badge bg={ROLE_VARIANT[task.assignee.role] ?? 'secondary'} className="fw-normal" style={{ fontSize: '0.65rem' }}>{task.assignee.role}</Badge></>
-                            : <span className="text-muted fst-italic">Unassigned</span>}
-                          <span className="inline-edit-hint ms-1" title="Click to edit">✏</span>
+                          <span>
+                            {task.assignee
+                              ? <>{task.assignee.name} <Badge bg={ROLE_VARIANT[task.assignee.role] ?? 'secondary'} className="fw-normal" style={{ fontSize: '0.65rem' }}>{task.assignee.role}</Badge></>
+                              : <span className="text-muted fst-italic">Unassigned</span>}
+                          </span>
+                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
@@ -544,7 +546,7 @@ export default function Tasks() {
                           >
                             {STATUS_LABEL[task.status]}
                           </span>
-                          <span className="inline-edit-hint ms-1" title="Click to edit">✏</span>
+                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
@@ -571,12 +573,10 @@ export default function Tasks() {
                         </div>
                       ) : (
                         <span className="inline-editable-cell">
-                          {task.end_date
-                            ? <span style={{ color: task.color === 'red' ? '#dc3545' : undefined }}>
-                                {dayjs(task.end_date).format('DD MMM YYYY')}
-                              </span>
-                            : '—'}
-                          <span className="inline-edit-hint ms-1" title="Click to edit">✏</span>
+                          <span style={{ color: task.color === 'red' && task.end_date ? '#dc3545' : undefined }}>
+                            {task.end_date ? dayjs(task.end_date).format('DD MMM YYYY') : '—'}
+                          </span>
+                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
@@ -635,7 +635,7 @@ export default function Tasks() {
                             </span>
                           ))}
                           {task.labels.length === 0 && <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>None</span>}
-                          <span className="inline-edit-hint ms-1" title="Click to edit">✏</span>
+                          <span className="inline-edit-hint" title="Click to edit">✏</span>
                         </span>
                       )}
                     </td>
