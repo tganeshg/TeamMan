@@ -11,6 +11,7 @@ import {
   getMembers, getLabels, addComment, uploadAttachment,
   deleteAttachment, downloadUrl, fetchMantisIssue, assignTask,
   getRelations, addRelation, deleteRelation, getReleases,
+  getPortalStatus,
 } from '../api/client'
 import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release } from '../types'
 
@@ -101,8 +102,10 @@ export default function Tasks() {
   const [members, setMembers] = useState<Member[]>([])
   const [labels, setLabels] = useState<Label[]>([])
   const [releases, setReleases] = useState<Release[]>([])
+  const [portalUrl, setPortalUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>({ sort_by: 'priority', sort_order: 'asc' })
+  const [presetLabel, setPresetLabel] = useState<string | null>(null)
 
   const [showDetail, setShowDetail] = useState(false)
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null)
@@ -137,14 +140,20 @@ export default function Tasks() {
     getMembers().then(setMembers)
     getLabels().then(setLabels)
     getReleases().then(setReleases)
+    getPortalStatus().then(c => { if (c.portal_url) setPortalUrl(c.portal_url) }).catch(() => {})
   }, [])
 
-  // Open task from topbar search result
+  // Handle navigation state: search result open OR dashboard preset filter
   useEffect(() => {
-    const state = routeLocation.state as { openTaskId?: number } | null
+    const state = routeLocation.state as { openTaskId?: number; preset?: TaskFilters; presetLabel?: string } | null
     if (state?.openTaskId) {
       openDetail({ id: state.openTaskId } as Task)
-      window.history.replaceState({}, '')  // clear state so refresh doesn't re-open
+      window.history.replaceState({}, '')
+    }
+    if (state?.preset !== undefined) {
+      setFilters({ sort_by: 'priority', sort_order: 'asc', ...state.preset })
+      setPresetLabel(state.presetLabel ?? null)
+      window.history.replaceState({}, '')
     }
   }, [routeLocation.state])
 
@@ -300,6 +309,24 @@ export default function Tasks() {
         headerEl
       )}
 
+      {/* Preset filter banner */}
+      {presetLabel && (
+        <div className="d-flex align-items-center gap-2 mb-3 px-3 py-2"
+          style={{ background: 'rgba(78,115,223,0.08)', border: '1px solid var(--primary)', borderRadius: 8 }}>
+          <i className="bi bi-funnel-fill" style={{ color: 'var(--primary)', fontSize: '0.85rem' }} />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--primary)' }}>
+            Showing: {presetLabel}
+          </span>
+          <button
+            className="btn btn-sm ms-auto"
+            style={{ padding: '2px 10px', fontSize: '0.8rem', color: 'var(--primary)', border: '1px solid var(--primary)', background: 'transparent', borderRadius: 6 }}
+            onClick={() => { setPresetLabel(null); setFilters({ sort_by: 'priority', sort_order: 'asc' }) }}
+          >
+            <i className="bi bi-x me-1" />Clear filter
+          </button>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="card filter-card mb-3">
         <div className="card-body py-2">
@@ -392,7 +419,11 @@ export default function Tasks() {
                     </td>
                     <td>
                       {task.portal_task_id
-                        ? <Badge bg="secondary" className="fw-normal">#{task.portal_task_id}</Badge>
+                        ? (portalUrl
+                            ? <a href={`${portalUrl}/view.php?id=${task.portal_task_id}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+                                <Badge bg="secondary" className="fw-normal" style={{ cursor: 'pointer' }}>#{task.portal_task_id}</Badge>
+                              </a>
+                            : <Badge bg="secondary" className="fw-normal">#{task.portal_task_id}</Badge>)
                         : <span className="text-muted">—</span>}
                     </td>
                     <td className="fw-medium text-primary" style={{ cursor: 'pointer' }}>{task.title}</td>
@@ -796,7 +827,13 @@ export default function Tasks() {
                 {selectedTask.portal_task_id && (
                   <div className="detail-meta-row">
                     <span className="detail-meta-label">Portal ID</span>
-                    <Badge bg="secondary" className="fw-normal">#{selectedTask.portal_task_id}</Badge>
+                    {portalUrl
+                      ? <a href={`${portalUrl}/view.php?id=${selectedTask.portal_task_id}`} target="_blank" rel="noreferrer">
+                          <Badge bg="secondary" className="fw-normal" style={{ cursor: 'pointer' }}>
+                            #{selectedTask.portal_task_id} <i className="bi bi-box-arrow-up-right ms-1" style={{ fontSize: '0.7rem' }} />
+                          </Badge>
+                        </a>
+                      : <Badge bg="secondary" className="fw-normal">#{selectedTask.portal_task_id}</Badge>}
                   </div>
                 )}
               </div>

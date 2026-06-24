@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Row, Col, Table, Badge, Spinner } from 'react-bootstrap'
 import { getDashboard } from '../api/client'
-import type { DashboardData } from '../types'
+import type { DashboardData, TaskFilters } from '../types'
 
 const STATUS_LABEL: Record<string, string> = {
   SID00: 'Not Started',
@@ -34,15 +35,20 @@ const ROLE_BADGE: Record<string, string> = {
   Lead: 'warning', Senior: 'primary', Junior: 'success', Intern: 'secondary',
 }
 
-const STAT_CARDS = [
-  { key: 'total',     label: 'Total Tasks',   icon: 'bi-list-check',                color: '#fff', bg: '#033C73' },
-  { key: 'closed',    label: 'Closed',        icon: 'bi-check-circle-fill',         color: '#fff', bg: '#73A839' },
-  { key: 'overdue',   label: 'Overdue',       icon: 'bi-exclamation-triangle-fill', color: '#fff', bg: '#C71C22' },
-  { key: 'due_today', label: 'Due Today',     icon: 'bi-clock-history',             color: '#fff', bg: '#DD5600' },
-  { key: 'due_week',  label: 'Due This Week', icon: 'bi-calendar-week-fill',        color: '#fff', bg: '#2FA4E7' },
+const today = new Date().toISOString().split('T')[0]
+const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+
+const STAT_CARDS: { key: string; label: string; icon: string; color: string; bg: string; filter: TaskFilters; filterLabel: string }[] = [
+  { key: 'total',     label: 'Total Tasks',   icon: 'bi-list-check',                color: '#fff', bg: '#033C73', filter: {},                                              filterLabel: 'All Tasks'       },
+  { key: 'closed',    label: 'Closed',        icon: 'bi-check-circle-fill',         color: '#fff', bg: '#73A839', filter: { status: 'SID12' },                             filterLabel: 'Closed Tasks'    },
+  { key: 'overdue',   label: 'Overdue',       icon: 'bi-exclamation-triangle-fill', color: '#fff', bg: '#C71C22', filter: { end_date_to: yesterday },                      filterLabel: 'Overdue Tasks'   },
+  { key: 'due_today', label: 'Due Today',     icon: 'bi-clock-history',             color: '#fff', bg: '#DD5600', filter: { end_date_from: today, end_date_to: today },    filterLabel: 'Due Today'       },
+  { key: 'due_week',  label: 'Due This Week', icon: 'bi-calendar-week-fill',        color: '#fff', bg: '#2FA4E7', filter: { end_date_from: today, end_date_to: nextWeek }, filterLabel: 'Due This Week'   },
 ]
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -78,7 +84,11 @@ export default function Dashboard() {
       <Row className="g-3 mb-4">
         {STAT_CARDS.map(card => (
           <Col key={card.key} xs={12} sm={6} lg={4} xl={true}>
-            <div className="card arch-stat-card h-100">
+            <div
+              className="card arch-stat-card h-100 arch-stat-card--clickable"
+              onClick={() => navigate('/tasks', { state: { preset: card.filter, presetLabel: card.filterLabel } })}
+              title={`View ${card.filterLabel}`}
+            >
               <div className="card-body py-3 px-3">
                 <div className="d-flex align-items-center gap-3">
                   <div className="arch-stat-icon" style={{ background: card.bg, color: card.color }}>
@@ -88,6 +98,9 @@ export default function Dashboard() {
                     <div className="arch-stat-label">{card.label}</div>
                     <div className="arch-stat-value">{values[card.key]}</div>
                   </div>
+                </div>
+                <div className="arch-stat-link">
+                  View tasks <i className="bi bi-arrow-right ms-1" />
                 </div>
               </div>
             </div>

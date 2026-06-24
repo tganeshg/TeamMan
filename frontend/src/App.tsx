@@ -92,6 +92,13 @@ export default function App() {
   const page = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
 
+  // Dark mode
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pd-theme') === 'dark')
+  useEffect(() => {
+    document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('pd-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Task[]>([])
@@ -233,9 +240,9 @@ export default function App() {
 
             {/* Search dropdown */}
             {searchOpen && (
-              <div style={{
+              <div className="pd-search-dropdown" style={{
                 position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-                background: '#fff', border: '1px solid var(--card-border)',
+                border: '1px solid var(--card-border)',
                 borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)',
                 zIndex: 9999, maxHeight: 360, overflowY: 'auto',
               }}>
@@ -257,7 +264,7 @@ export default function App() {
                           alignItems: 'center', gap: 10, borderBottom: '1px solid var(--card-border)',
                           transition: 'background 0.12s',
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fc')}
+                        onMouseEnter={e => (e.currentTarget.style.background = document.body.getAttribute('data-theme') === 'dark' ? 'rgba(255,255,255,0.06)' : '#f8f9fc')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         <span style={{
@@ -291,8 +298,15 @@ export default function App() {
 
             <div className="pd-topbar-divider" />
 
-            {/* <a className="pd-icon-btn" href="#"><i className="bi bi-bell" /><span className="pd-notif-dot" /></a> */}
-            {/* <a className="pd-icon-btn" href="#"><i className="bi bi-envelope" /></a> */}
+            {/* Dark mode toggle */}
+            <button
+              className="pd-icon-btn"
+              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              onClick={() => setDarkMode(d => !d)}
+              style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+            >
+              <i className={`bi ${darkMode ? 'bi-sun-fill' : 'bi-moon-stars-fill'}`} />
+            </button>
 
             <div className="pd-topbar-divider" />
 
