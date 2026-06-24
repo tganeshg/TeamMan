@@ -104,8 +104,14 @@ export default function Tasks() {
   const [releases, setReleases] = useState<Release[]>([])
   const [portalUrl, setPortalUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [filters, setFilters] = useState<TaskFilters>({ sort_by: 'priority', sort_order: 'asc' })
-  const [presetLabel, setPresetLabel] = useState<string | null>(null)
+  const [filters, setFilters] = useState<TaskFilters>(() => {
+    const s = routeLocation.state as { preset?: TaskFilters } | null
+    return { sort_by: 'priority', sort_order: 'asc', ...(s?.preset ?? {}) }
+  })
+  const [presetLabel, setPresetLabel] = useState<string | null>(() => {
+    const s = routeLocation.state as { presetLabel?: string } | null
+    return s?.presetLabel ?? null
+  })
 
   const [showDetail, setShowDetail] = useState(false)
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null)
@@ -214,15 +220,16 @@ export default function Tasks() {
   // Handle navigation state: search result open OR dashboard preset filter
   useEffect(() => {
     const state = routeLocation.state as { openTaskId?: number; preset?: TaskFilters; presetLabel?: string } | null
-    if (state?.openTaskId) {
+    if (!state) return
+    if (state.openTaskId) {
       openDetail({ id: state.openTaskId } as Task)
-      window.history.replaceState({}, '')
     }
-    if (state?.preset !== undefined) {
+    if (state.preset !== undefined) {
       setFilters({ sort_by: 'priority', sort_order: 'asc', ...state.preset })
       setPresetLabel(state.presetLabel ?? null)
-      window.history.replaceState({}, '')
     }
+    // Clear state immediately so re-renders don't re-apply
+    window.history.replaceState({}, '')
   }, [routeLocation.state])
 
   const openDetail = async (task: Task) => {
@@ -400,26 +407,26 @@ export default function Tasks() {
         <div className="card-body py-2">
           <Row className="g-2 align-items-center">
             <Col xs={12} sm={6} md={3} lg={2}>
-              <Form.Select size="sm" onChange={e => setFilters(f => ({ ...f, assignee_id: e.target.value ? Number(e.target.value) : undefined }))}>
+              <Form.Select size="sm" value={filters.assignee_id ?? ''} onChange={e => setFilters(f => ({ ...f, assignee_id: e.target.value ? Number(e.target.value) : undefined }))}>
                 <option value="">All Members</option>
                 {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
               </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={3} lg={2}>
-              <Form.Select size="sm" onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}>
+              <Form.Select size="sm" value={filters.status ?? ''} onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}>
                 <option value="">All Status</option>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
               </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Select size="sm" onChange={e => setFilters(f => ({ ...f, task_type: e.target.value || undefined }))}>
+              <Form.Select size="sm" value={filters.task_type ?? ''} onChange={e => setFilters(f => ({ ...f, task_type: e.target.value || undefined }))}>
                 <option value="">All Types</option>
                 <option value="bug">Bug</option>
                 <option value="feature">Feature</option>
               </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Select size="sm" onChange={e => setFilters(f => ({ ...f, label_ids: e.target.value ? [Number(e.target.value)] : undefined }))}>
+              <Form.Select size="sm" value={filters.label_ids?.[0] ?? ''} onChange={e => setFilters(f => ({ ...f, label_ids: e.target.value ? [Number(e.target.value)] : undefined }))}>
                 <option value="">All Labels</option>
                 {labels.map(l => (
                   <option key={l.id} value={l.id}>{l.name}</option>
@@ -427,7 +434,7 @@ export default function Tasks() {
               </Form.Select>
             </Col>
             <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Control size="sm" type="date" placeholder="Due by"
+              <Form.Control size="sm" type="date" value={filters.end_date_to ?? ''}
                 onChange={e => setFilters(f => ({ ...f, end_date_to: e.target.value || undefined }))} />
             </Col>
             <Col xs="auto">
