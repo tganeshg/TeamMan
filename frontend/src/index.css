@@ -824,3 +824,19 @@ body[data-theme="dark"] .alert-danger {
   border-color: rgba(199,28,34,0.3) !important;
   color: #f5a3a6 !important;
 }
+
+/* Inline editing hint */
+.inline-editable-cell {
+  display: inline-flex;
+  align-items: center;
+}
+.inline-edit-hint {
+  opacity: 0;
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color, #6c757d);
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+td:hover .inline-edit-hint {
+  opacity: 1;
+}
