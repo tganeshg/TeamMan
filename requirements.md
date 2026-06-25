@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.8 (Phase 1 Complete)
+**Version:** 1.10 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -110,9 +110,23 @@ Color is computed server-side on every task fetch (never stored):
 
 ## 7. Filtering & Sorting
 
-Filter tasks by: Assignee, Status, Type, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
+Filter tasks by: Assignee, Status, Type, Release, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
+
+The task list view shows columns: Type, Assignee, Status, Due Date, Labels, and **Release** (plus ID, Title, Priority).
 
 Sort by: Priority (default) · Title · Due Date — direction toggleable
+
+### Exclude (NOT) Filters
+
+In addition to the include filters above, tasks can be **excluded** by value:
+
+- Supported fields: Status, Assignee, Type, Labels, Release, Priority
+- Built via a field + value + Add control; active excludes appear as removable `≠ Field: Value` chips
+- **Multiple excluded values** are supported (per field and across fields)
+- Include and exclude filters work **together** (combined as AND)
+- Examples: show all tasks except "Not Started"; except those assigned to a given user; except those in a given release
+- Excluding an assignee / release / priority still shows tasks that have none of that field (NULL stays visible)
+- Existing include-filter behavior is unchanged; filtering is performed in the database (no client-side scan)
 
 - The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default `priority / ascending` view.
 

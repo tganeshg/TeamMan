@@ -1,7 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date, timedelta
+
+
+def _csv_ints(s: Optional[str]) -> list:
+    if not s:
+        return []
+    out = []
+    for x in s.split(","):
+        x = x.strip()
+        if x.lstrip("-").isdigit():
+            out.append(int(x))
+    return out
+
+
+def _csv_strs(s: Optional[str]) -> list:
+    if not s:
+        return []
+    return [x.strip() for x in s.split(",") if x.strip()]
 
 from database import get_db
 from models import Task, Label, TeamMember, TaskChecklistItem
@@ -133,7 +151,14 @@ def list_tasks(
     start_date_to: Optional[date] = Query(None),
     end_date_from: Optional[date] = Query(None),
     end_date_to: Optional[date] = Query(None),
+    release_id: Optional[int] = Query(None),
     active: Optional[bool] = Query(None),
+    exclude_status: Optional[str] = Query(None),
+    exclude_assignee_id: Optional[str] = Query(None),
+    exclude_task_type: Optional[str] = Query(None),
+    exclude_label_ids: Optional[str] = Query(None),
+    exclude_release_id: Optional[str] = Query(None),
+    exclude_priority: Optional[str] = Query(None),
     sort_by: str = Query("priority"),
     sort_order: str = Query("asc"),
     search: Optional[str] = Query(None),
@@ -142,6 +167,7 @@ def list_tasks(
     q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.checklist))
     if assignee_id is not None: q = q.filter(Task.assignee_id == assignee_id)
     if status:          q = q.filter(Task.status == status)
+    if release_id is not None: q = q.filter(Task.release_id == release_id)
     if active:          q = q.filter(Task.status.notin_(_TERMINAL))
     if task_type:       q = q.filter(Task.task_type == task_type)
     if start_date_from: q = q.filter(Task.start_date >= start_date_from)
@@ -157,6 +183,27 @@ def list_tasks(
         ids = [int(i) for i in label_ids.split(",") if i.strip().isdigit()]
         if ids:
             q = q.filter(Task.labels.any(Label.id.in_(ids)))
+
+    # ── Exclude (NOT) filters — applied as AND alongside include filters ──
+    ex_status = _csv_strs(exclude_status)
+    if ex_status:
+        q = q.filter(Task.status.notin_(ex_status))
+    ex_type = _csv_strs(exclude_task_type)
+    if ex_type:
+        q = q.filter(Task.task_type.notin_(ex_type))
+    ex_assignee = _csv_ints(exclude_assignee_id)
+    if ex_assignee:  # keep unassigned tasks visible
+        q = q.filter(or_(Task.assignee_id.is_(None), Task.assignee_id.notin_(ex_assignee)))
+    ex_release = _csv_ints(exclude_release_id)
+    if ex_release:   # keep tasks with no release visible
+        q = q.filter(or_(Task.release_id.is_(None), Task.release_id.notin_(ex_release)))
+    ex_priority = _csv_ints(exclude_priority)
+    if ex_priority:  # keep tasks with no priority visible
+        q = q.filter(or_(Task.priority.is_(None), Task.priority.notin_(ex_priority)))
+    ex_labels = _csv_ints(exclude_label_ids)
+    if ex_labels:    # hide tasks carrying ANY of the excluded labels
+        q = q.filter(~Task.labels.any(Label.id.in_(ex_labels)))
+
     col_map = {
         "priority": Task.priority, "title": Task.title,
         "start_date": Task.start_date, "end_date": Task.end_date,

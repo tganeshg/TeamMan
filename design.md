@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.8 (Phase 1 Complete)
+**Version:** 1.10 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -170,7 +170,9 @@ In addition to the cards, the two panels below them are click-through to the sam
 ### Pages
 
 #### Tasks
-- Filter bar + sortable table; label-based filter (replaces start-date filter). Filters are fully controlled — a dashboard preset or a cleared filter resets them to the `priority / asc` default.
+- Columns: P# · ID · Title · Type · Assignee · Status · Due Date · Labels · **Release** · actions. The Release column shows the task's release name (or — if none).
+- Filter bar + sortable table; **include** filters: Member, Status, Type, Label, **Release**, Due-date, plus sort field/direction (`release_id` filter is backed by the task-list endpoint). Filters are fully controlled — a dashboard preset or a cleared filter resets them to the `priority / asc` default.
+- **Exclude (NOT) filters**: a builder row (field + value + Add) lets the user exclude values for Status, Assignee, Type, Labels, Release, and Priority. Active excludes show as removable `≠ Field: Value` chips. Multiple values per field are supported, and exclude works together with include filters (AND). Sent to the API as comma-separated arrays (`exclude_status`, `exclude_assignee_id`, `exclude_task_type`, `exclude_label_ids`, `exclude_release_id`, `exclude_priority`); the backend applies them as SQL `NOT IN` / `NOT EXISTS`, keeping NULL assignee/release/priority rows visible.
 - **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets filters and dismisses the banner.
 - **Inline editing in the list view** — click a cell to edit in place:
   - **Priority** (only when assigned), **Due Date**, **Labels** (checkbox popover), **Title** (feature tasks only): edit in a popover; **Enter** saves, **Escape** cancels, clicking outside auto-saves.
@@ -412,3 +414,5 @@ Both exports generate the same document structure:
 | `task_checklist_items` created by `create_all` | Brand-new table needs no migration, unlike the `todo_threads.position` column |
 | Dashboard status/workload counts click through to the filtered task list | Reuses the stat-card preset mechanism; lets the user jump from a metric to the exact rows behind it |
 | Added an `active` task-list filter (excludes SID12/SID13) | The workload count is non-terminal only; a plain assignee filter would include closed tasks and not match the number |
+| Exclude filters as comma-separated array params, applied as SQL NOT IN / NOT EXISTS | Pushes filtering to the DB (fast for large lists); multiple values per field; works alongside include filters as AND |
+| Exclude keeps NULL assignee/release/priority rows visible (`OR is NULL`) | A plain `NOT IN` drops NULL rows in SQL; excluding "Vipul" or "release X" shouldn't hide unassigned / unreleased tasks |

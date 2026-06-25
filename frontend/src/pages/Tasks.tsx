@@ -185,6 +185,65 @@ export default function Tasks() {
     load()
   }
 
+  // ── Exclude (NOT) filter builder ──────────────────────────────────────────
+  const [exField, setExField] = useState<string>('exclude_status')
+  const [exValue, setExValue] = useState<string>('')
+
+  const EX_FIELDS: { key: string; label: string; numeric: boolean }[] = [
+    { key: 'exclude_status', label: 'Status', numeric: false },
+    { key: 'exclude_assignee_id', label: 'Assignee', numeric: true },
+    { key: 'exclude_task_type', label: 'Type', numeric: false },
+    { key: 'exclude_label_ids', label: 'Labels', numeric: true },
+    { key: 'exclude_release_id', label: 'Release', numeric: true },
+    { key: 'exclude_priority', label: 'Priority', numeric: true },
+  ]
+
+  const exValueOptions = (): { value: string; label: string }[] => {
+    switch (exField) {
+      case 'exclude_status':      return Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: `${k} – ${v}` }))
+      case 'exclude_assignee_id': return members.map(m => ({ value: String(m.id), label: m.name }))
+      case 'exclude_task_type':   return [{ value: 'bug', label: 'Bug' }, { value: 'feature', label: 'Feature' }]
+      case 'exclude_label_ids':   return labels.map(l => ({ value: String(l.id), label: l.name }))
+      case 'exclude_release_id':  return releases.map(r => ({ value: String(r.id), label: r.name }))
+      case 'exclude_priority':    return [...new Set(tasks.map(t => t.priority).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => ({ value: String(p), label: `P${p}` }))
+      default: return []
+    }
+  }
+
+  const addExclude = () => {
+    if (!exValue) return
+    const def = EX_FIELDS.find(d => d.key === exField)!
+    const parsed: any = def.numeric ? Number(exValue) : exValue
+    setFilters(f => {
+      const cur = ((f as any)[exField] ?? []) as any[]
+      if (cur.includes(parsed)) return f
+      return { ...f, [exField]: [...cur, parsed] }
+    })
+    setExValue('')
+  }
+
+  const removeExclude = (key: string, val: any) => {
+    setFilters(f => {
+      const cur = ((f as any)[key] ?? []) as any[]
+      const next = cur.filter(x => x !== val)
+      return { ...f, [key]: next.length ? next : undefined }
+    })
+  }
+
+  const exValueLabel = (key: string, val: any): string => {
+    switch (key) {
+      case 'exclude_status':      return `${val} – ${STATUS_LABEL[val] ?? val}`
+      case 'exclude_assignee_id': return members.find(m => m.id === val)?.name ?? `#${val}`
+      case 'exclude_task_type':   return val === 'bug' ? 'Bug' : 'Feature'
+      case 'exclude_label_ids':   return labels.find(l => l.id === val)?.name ?? `#${val}`
+      case 'exclude_release_id':  return releases.find(r => r.id === val)?.name ?? `#${val}`
+      case 'exclude_priority':    return `P${val}`
+      default: return String(val)
+    }
+  }
+  const exFieldLabel = (key: string) => EX_FIELDS.find(d => d.key === key)?.label ?? key
+  const hasExcludes = EX_FIELDS.some(d => (((filters as any)[d.key] ?? []) as any[]).length > 0)
+
   // Inline editing state
   const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' } | null>(null)
   const [inlineValue, setInlineValue] = useState<any>(null)
@@ -458,55 +517,90 @@ export default function Tasks() {
       {/* Filter Bar */}
       <div className="card filter-card mb-3">
         <div className="card-body py-2">
-          <Row className="g-2 align-items-center">
-            <Col xs={12} sm={6} md={3} lg={2}>
-              <Form.Select size="sm" value={filters.assignee_id ?? ''} onChange={e => setFilters(f => ({ ...f, assignee_id: e.target.value ? Number(e.target.value) : undefined }))}>
-                <option value="">All Members</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {/* Include filters — kept on a single line (scrolls horizontally if needed) */}
+          <div className="d-flex align-items-center gap-2 flex-nowrap" style={{ overflowX: 'auto' }}>
+            <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 120 }} value={filters.assignee_id ?? ''} onChange={e => setFilters(f => ({ ...f, assignee_id: e.target.value ? Number(e.target.value) : undefined }))}>
+              <option value="">All Members</option>
+              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </Form.Select>
+            <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 120 }} value={filters.status ?? ''} onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}>
+              <option value="">All Status</option>
+              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
+            </Form.Select>
+            <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 110 }} value={filters.task_type ?? ''} onChange={e => setFilters(f => ({ ...f, task_type: e.target.value || undefined }))}>
+              <option value="">All Types</option>
+              <option value="bug">Bug</option>
+              <option value="feature">Feature</option>
+            </Form.Select>
+            <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 110 }} value={filters.label_ids?.[0] ?? ''} onChange={e => setFilters(f => ({ ...f, label_ids: e.target.value ? [Number(e.target.value)] : undefined }))}>
+              <option value="">All Labels</option>
+              {labels.map(l => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </Form.Select>
+            <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 110 }} value={filters.release_id ?? ''} onChange={e => setFilters(f => ({ ...f, release_id: e.target.value ? Number(e.target.value) : undefined }))}>
+              <option value="">All Releases</option>
+              {releases.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </Form.Select>
+            <Form.Control size="sm" style={{ flex: '1 1 0', minWidth: 130 }} type="date" value={filters.end_date_to ?? ''}
+              onChange={e => setFilters(f => ({ ...f, end_date_to: e.target.value || undefined }))} />
+            <Form.Select size="sm" style={{ flex: '0 1 120px', minWidth: 110 }} value={filters.sort_by} onChange={e => setFilters(f => ({ ...f, sort_by: e.target.value }))}>
+              <option value="priority">Priority</option>
+              <option value="title">Title</option>
+              <option value="end_date">Due Date</option>
+            </Form.Select>
+            <Button
+              variant={filters.sort_order === 'asc' ? 'outline-primary' : 'primary'}
+              size="sm"
+              className="flex-shrink-0"
+              onClick={() => setFilters(f => ({ ...f, sort_order: f.sort_order === 'asc' ? 'desc' : 'asc' }))}
+            >
+              <i className={`bi bi-sort-${filters.sort_order === 'asc' ? 'up' : 'down'}`} />
+            </Button>
+          </div>
+
+          {/* Exclude (NOT) filter builder */}
+          <Row className="g-2 align-items-center mt-1">
+            <Col xs="auto">
+              <span className="badge" style={{ background: '#fde8e8', color: '#c0392b', fontWeight: 700, fontSize: '0.72rem' }}>
+                <i className="bi bi-dash-circle me-1" />Exclude
+              </span>
+            </Col>
+            <Col xs={12} sm={4} md={3} lg={2}>
+              <Form.Select size="sm" value={exField} onChange={e => { setExField(e.target.value); setExValue('') }}>
+                {EX_FIELDS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
               </Form.Select>
             </Col>
-            <Col xs={12} sm={6} md={3} lg={2}>
-              <Form.Select size="sm" value={filters.status ?? ''} onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}>
-                <option value="">All Status</option>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
+            <Col xs={12} sm={5} md={3} lg={3}>
+              <Form.Select size="sm" value={exValue} onChange={e => setExValue(e.target.value)}>
+                <option value="">— select value to exclude —</option>
+                {exValueOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Form.Select>
-            </Col>
-            <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Select size="sm" value={filters.task_type ?? ''} onChange={e => setFilters(f => ({ ...f, task_type: e.target.value || undefined }))}>
-                <option value="">All Types</option>
-                <option value="bug">Bug</option>
-                <option value="feature">Feature</option>
-              </Form.Select>
-            </Col>
-            <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Select size="sm" value={filters.label_ids?.[0] ?? ''} onChange={e => setFilters(f => ({ ...f, label_ids: e.target.value ? [Number(e.target.value)] : undefined }))}>
-                <option value="">All Labels</option>
-                {labels.map(l => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </Form.Select>
-            </Col>
-            <Col xs={12} sm={6} md={2} lg={2}>
-              <Form.Control size="sm" type="date" value={filters.end_date_to ?? ''}
-                onChange={e => setFilters(f => ({ ...f, end_date_to: e.target.value || undefined }))} />
             </Col>
             <Col xs="auto">
-              <Form.Select size="sm" value={filters.sort_by} onChange={e => setFilters(f => ({ ...f, sort_by: e.target.value }))}>
-                <option value="priority">Priority</option>
-                <option value="title">Title</option>
-                <option value="end_date">Due Date</option>
-              </Form.Select>
-            </Col>
-            <Col xs="auto">
-              <Button
-                variant={filters.sort_order === 'asc' ? 'outline-primary' : 'primary'}
-                size="sm"
-                onClick={() => setFilters(f => ({ ...f, sort_order: f.sort_order === 'asc' ? 'desc' : 'asc' }))}
-              >
-                <i className={`bi bi-sort-${filters.sort_order === 'asc' ? 'up' : 'down'}`} />
+              <Button size="sm" variant="outline-danger" onClick={addExclude} disabled={!exValue}>
+                <i className="bi bi-plus me-1" />Add
               </Button>
             </Col>
           </Row>
+
+          {/* Active exclude chips */}
+          {hasExcludes && (
+            <div className="d-flex flex-wrap gap-1 mt-2">
+              {EX_FIELDS.flatMap(d =>
+                (((filters as any)[d.key] ?? []) as any[]).map(val => (
+                  <span
+                    key={`${d.key}-${val}`}
+                    className="badge d-inline-flex align-items-center gap-1"
+                    style={{ background: '#fff', color: '#c0392b', border: '1px solid #f1b0b0', fontWeight: 600, fontSize: '0.72rem' }}
+                  >
+                    ≠ {exFieldLabel(d.key)}: {exValueLabel(d.key, val)}
+                    <i className="bi bi-x" style={{ cursor: 'pointer' }} onClick={() => removeExclude(d.key, val)} />
+                  </span>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -526,6 +620,7 @@ export default function Tasks() {
                   <th style={{ width: 130 }}>Status</th>
                   <th style={{ width: 145 }}>Due Date</th>
                   <th>Labels</th>
+                  <th style={{ width: 120 }}>Release</th>
                   <th style={{ width: 80 }}></th>
                 </tr>
               </thead>
@@ -770,6 +865,17 @@ export default function Tasks() {
                         </span>
                       )}
                     </td>
+
+                    {/* Release */}
+                    <td>
+                      {(() => {
+                        const rel = releases.find(r => r.id === task.release_id)
+                        return rel
+                          ? <span className="badge" style={{ background: '#eef0f8', color: '#4e73df', fontWeight: 600, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{rel.name}</span>
+                          : <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>—</span>
+                      })()}
+                    </td>
+
                     <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                       <Button variant="outline-secondary" size="sm" className="me-1"
                         style={{ padding: '1px 6px', lineHeight: 1 }}

@@ -226,5 +226,7 @@ TeamMan/
 - Todo: collapsible threads (collapsed by default), vertical full-width layout, and drag-and-drop reordering of threads and checklist items (auto-saved, order persists across restart)
 - Task checklists: per-task sub-items with add/edit/delete, done toggle, and drag-and-drop reordering — persisted on task save, shown in the detail panel and as a progress badge in the list
 - Dashboard drill-through: clicking a Tasks-by-Status count or a Team Workload active-task count opens the matching filtered task list (new `active` filter keeps the workload counts exact)
+- Tasks list: added a Release column and a Release filter
+- Tasks list: added Exclude (NOT) filters for Status, Assignee, Type, Labels, Release, and Priority — multiple values, combinable with include filters
 
 > Authentication (login screen) is planned for Phase 2.

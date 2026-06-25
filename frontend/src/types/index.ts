@@ -165,7 +165,14 @@ export interface TaskFilters {
   start_date_to?: string
   end_date_from?: string
   end_date_to?: string
+  release_id?: number
   active?: boolean
+  exclude_status?: string[]
+  exclude_assignee_id?: number[]
+  exclude_task_type?: string[]
+  exclude_label_ids?: number[]
+  exclude_release_id?: number[]
+  exclude_priority?: number[]
   sort_by?: string
   sort_order?: 'asc' | 'desc'
   search?: string
