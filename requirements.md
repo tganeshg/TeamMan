@@ -70,7 +70,7 @@ PrimeDesk is a local team and task management application built for the Prime Te
 ## 4. Priority Rules
 
 - Priority is **per team member** — two different members can both have a task at priority 1
-- Priority field is **required** when an assignee is selected; cannot save without it
+- Priority field is **optional** when creating a task; if left blank for an assigned task, it is auto-appended to the **end** of that member's queue (existing priorities unchanged)
 - The UI shows the valid range (e.g. `1 – 6`) next to the priority field
 - On insert at position K: tasks at K..N shift up by +1
 - On move from K to L (same member):

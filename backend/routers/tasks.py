@@ -49,41 +49,40 @@ def enrich(task: Task) -> TaskOut:
 
 def _apply_priority(db: Session, assignee_id: int, task_id: int, new_priority: int):
     """Place task_id at new_priority in the assignee's queue, keeping the
-    queue as a clean 1..N sequence. Handles both insert (task not yet in
-    queue) and move (task already in queue).
+    queue as a clean 1..N sequence. Handles insert, move, and re-prioritising
+    a task whose current priority is NULL (e.g. newly assigned / unprioritised).
 
     Sets task.priority directly on the Task object — caller must NOT set it again.
     """
 
-    # Load ALL tasks for this member including the task being moved
-    all_tasks = (
+    # The existing queue for this member (clean 1..N), excluding the task
+    # being placed so it is never counted twice or ordered by a stale value.
+    others = (
         db.query(Task)
-        .filter(Task.assignee_id == assignee_id, Task.priority.isnot(None))
+        .filter(
+            Task.assignee_id == assignee_id,
+            Task.priority.isnot(None),
+            Task.id != task_id,
+        )
         .order_by(Task.priority)
         .all()
     )
 
-    # Separate the task being moved from the rest
-    target = next((t for t in all_tasks if t.id == task_id), None)
-    others = [t for t in all_tasks if t.id != task_id]
+    # Fetch the task being placed directly by id, so it is found even when its
+    # current priority is NULL (it would be excluded from the queue query above).
+    target = db.query(Task).filter(Task.id == task_id).first()
 
     # Clamp new_priority to [1, len(others)+1]
     clamped = max(1, min(new_priority, len(others) + 1))
 
-    # Build the final ordered list: insert target at clamped position
+    # Build the final ordered list: insert target at clamped position,
+    # then assign sequential priorities 1..N to every task.
     ordered = others[:]
-    if target:
+    if target is not None:
         ordered.insert(clamped - 1, target)   # 0-indexed insert
-    else:
-        # New task not yet in list — will be inserted by caller
-        ordered.insert(clamped - 1, None)
 
-    # Assign sequential priorities 1..N to every task in the final order
-    priority_counter = 1
-    for t in ordered:
-        if t is not None:
-            t.priority = priority_counter
-        priority_counter += 1
+    for i, t in enumerate(ordered):
+        t.priority = i + 1
 
     db.flush()
     return clamped
@@ -151,6 +150,15 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     if task.assignee_id and task.priority is not None:
         _apply_priority(db, task.assignee_id, task.id, task.priority)
         # _apply_priority already set task.priority to the clamped value
+    elif task.assignee_id:
+        # No explicit priority — append to the end of the member's queue,
+        # leaving all existing task priorities unchanged.
+        count = db.query(Task).filter(
+            Task.assignee_id == task.assignee_id,
+            Task.priority.isnot(None),
+            Task.id != task.id,
+        ).count()
+        task.priority = count + 1
 
     db.commit()
     db.refresh(task)

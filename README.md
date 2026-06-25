@@ -184,7 +184,7 @@ TeamMan/
 ## Priority Rules
 
 - Priority is **per team member** — each member has an independent 1..N queue
-- Priority field is **required** when an assignee is selected
+- Priority field is **optional** on create — leave it blank to append the task to the end of the assignee's queue
 - On insert at position K: tasks at K..N shift up by +1
 - On move from K to L: only tasks between K and L shift (no gaps ever created)
 - On delete: tasks above the deleted slot shift down by -1

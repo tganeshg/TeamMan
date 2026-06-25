@@ -357,7 +357,7 @@ Both exports generate the same document structure:
 | Python venv (not system Python) | System Python may have broken pip or be PEP 668 locked |
 | Vite pinned to v4.5.3 | Windows machine runs Node 16; Vite 5 requires Node 18+ |
 | `_apply_priority` loads all tasks and reorders in Python | Previous bulk SQL UPDATE approach had SQLAlchemy session sync issues |
-| Priority is required when assignee is set | Prevents NULL priority tasks which broke queue ordering |
+| Priority is optional on create; blank assigned tasks append to end of queue | Avoids forcing a position the user hasn't decided; never pushes a new task to the top by leaving priority NULL |
 | `closed_at` auto-set by backend on SID12/SID13 | Needed for accurate on-time/early/late report classification |
 | Color computed at read time, not stored | Stays accurate as dates change without scheduled jobs |
 | SQLite (not PostgreSQL) | Single-user local app, zero-config requirement |

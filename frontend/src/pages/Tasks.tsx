@@ -293,10 +293,6 @@ export default function Tasks() {
 
   const handleTaskSubmit = async () => {
     if (!form.title?.trim()) return
-    if (form.assignee_id && !form.priority) {
-      setMantisError('Priority is required when a member is assigned.')
-      return
-    }
     setTaskSaving(true)
     try {
       const payload = {
@@ -786,7 +782,7 @@ export default function Tasks() {
             </Col>
             <Col md={6}>
               <Form.Label className="small fw-semibold">
-                Priority {form.assignee_id && <span className="text-danger">*</span>}
+                Priority <span className="text-muted fw-normal">(optional)</span>
               </Form.Label>
               {(() => {
                 const memberTasks = tasks.filter(t =>
@@ -799,14 +795,14 @@ export default function Tasks() {
                   <>
                     <Form.Control
                       size="sm" type="number" min={1} max={maxP}
-                      placeholder={form.assignee_id ? `1 – ${maxP}` : '1 = highest'}
+                      placeholder={form.assignee_id ? `1 – ${maxP} (blank = last)` : '1 = highest'}
                       value={form.priority ?? ''}
                       onChange={e => setField('priority', e.target.value)}
                       isInvalid={!!form.assignee_id && form.priority !== '' && form.priority !== undefined && (Number(form.priority) < 1 || Number(form.priority) > maxP)}
                     />
                     {form.assignee_id && (
                       <Form.Text className="text-muted">
-                        Valid range: 1 – {maxP}. Will be auto-clamped if out of range.
+                        Valid range: 1 – {maxP}. Leave blank to add at the end (position {maxP}); out-of-range values are auto-clamped.
                       </Form.Text>
                     )}
                   </>
