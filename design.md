@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.4 (Phase 1 Complete)
-**Last Updated:** 2026-06-23
+**Version:** 1.5 (Phase 1 Complete)
+**Last Updated:** 2026-06-25
 
 ---
 
@@ -123,39 +123,58 @@ TeamMan/
 
 ## 4. UI Design
 
-### Theme — SB Admin 2
+### Theme — ArchitectUI (over Bootstrap 5)
+
+The base UI was migrated from SB Admin 2 to the **ArchitectUI Dashboard** look (dashboardpack.com). The legacy `pd-*` component tokens in `index.css` are retained for cards/tables/sidebar; ArchitectUI styling is layered on top (notably the `arch-stat-card` dashboard cards). Status/label/timing semantic colors are unchanged from SB Admin 2.
+
+**Semantic palette (status, labels, timing):**
 
 | Name | Hex | Used For |
 |---|---|---|
 | Primary Blue | `#4e73df` | Sidebar, buttons, active nav |
 | Success Green | `#1cc88a` | Closed tasks, early/on-time timing |
-| Info Cyan | `#36b9cc` | Info stat card |
+| Info Cyan | `#36b9cc` | Info / POC / dev-testing status |
 | Warning Yellow | `#f6c23e` | Near-deadline, waiting/on-hold |
 | Danger Red | `#e74a3b` | Overdue, rework/reopened |
 | Secondary Gray | `#858796` | Not started, closed, muted |
-| Body BG | `#f8f9fc` | Page background |
+| Body BG | `#f8f9fc` | Page background (light mode) |
+
+### Dark Mode
+
+- Topbar toggle (sun/moon icon) flips `document.body[data-theme]` between `light` and `dark`
+- Preference persisted in `localStorage` under key `pd-theme`; restored on load
+- All colors driven by CSS variables (`--text-dark`, `--text-muted`, `--card-border`, `--card-shadow`, `--bs-body-bg`, etc.) so both themes share one component layer
 
 ### Layout
 
-- **Fixed sidebar** (240px) — dark blue gradient, scrollable nav
-- **Sticky topbar** — white, release badge, user avatar
-  - Notification bell and mail icons hidden (reserved for future)
-- **Page content** — card-based layout
+- **Fixed sidebar** (240px) — dark blue gradient, scrollable nav; Main + Account sections
+- **Sticky topbar** — live search (left), active-release badges + dark-mode toggle + user pill (right)
+- **Page content** — card-based layout; page header exposes a `#page-header-actions` portal target (e.g. Tasks injects its "New Task" button there)
 
-### Stat Card Order (Dashboard)
+### Stat Cards (Dashboard) — ArchitectUI style, clickable
 
-1. Total Tasks (blue)
-2. Closed (green)
-3. Overdue (red)
-4. Due Today (yellow)
-5. Due This Week (cyan)
+Rendered as `arch-stat-card arch-stat-card--clickable`. Each card shows a "View tasks →" link and, on click, navigates to `/tasks` carrying a router-state **preset filter** + label.
+
+| # | Card | Card BG | Click filter |
+|---|---|---|---|
+| 1 | Total Tasks | `#033C73` | All tasks |
+| 2 | Closed | `#73A839` | `status = SID12` |
+| 3 | Overdue | `#C71C22` | `end_date_to = yesterday` |
+| 4 | Due Today | `#DD5600` | `end_date_from = end_date_to = today` |
+| 5 | Due This Week | `#2FA4E7` | `end_date_from = today`, `end_date_to = +7d` |
 
 ### Pages
 
 #### Tasks
-- Filter bar + sortable table; label-based filter (replaces start-date filter)
+- Filter bar + sortable table; label-based filter (replaces start-date filter). Filters are fully controlled — a dashboard preset or a cleared filter resets them to the `priority / asc` default.
+- **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets filters and dismisses the banner.
+- **Inline editing in the list view** — click a cell to edit in place:
+  - **Priority** (only when assigned), **Due Date**, **Labels** (checkbox popover), **Title** (feature tasks only): edit in a popover; **Enter** saves, **Escape** cancels, clicking outside auto-saves.
+  - **Assignee**, **Status**: dropdown that saves immediately on change.
+  - All inline saves go through `quickUpdate()`, which re-sends the full task payload with the single changed field patched, then reloads.
+- **ID column**: portal task IDs render as a link to `{portalUrl}/view.php?id={id}` (opens in new tab) when portal credentials are configured.
 - Edit modal: all fields including Release dropdown and Relations section
-- Detail offcanvas: meta, labels, description, comments, attachments
+- Detail offcanvas: meta, labels, description, comments, attachments; Portal ID also links out to Mantis
 
 #### Reports
 - Left panel: release list with edit (✏) button per release
@@ -350,3 +369,9 @@ Both exports generate the same document structure:
 | No login screen in v1 | Deferred to v2 |
 | Dashboard uses `Task.status.notin_(["SID12","SID13"])` | Old `!= "completed"` string never matched SID codes; caused empty Tasks by Status and Team Workload sections |
 | Topbar search uses backend `ilike` with 300ms debounce | Avoids per-keystroke API calls; search covers both `title` and `portal_task_id` columns |
+| Migrated theme SB Admin 2 → ArchitectUI | Richer dashboard card look; semantic status colors kept for continuity |
+| Dark mode via `data-theme` + CSS variables (persisted in `localStorage`) | One component layer serves both themes; no per-component conditionals |
+| Dashboard stat cards clickable, pass router-state preset filter to Tasks | Lets the user drill from a metric straight into the matching task list |
+| Inline list editing re-sends full task payload via `quickUpdate` | Reuses the existing `PUT /tasks/{id}` contract; no new partial-update endpoint needed |
+| Inline title editing limited to feature tasks | Bug titles come from Mantis and should stay authoritative |
+| Tasks filter bar made fully controlled | Preset filters from the dashboard and "Clear filter" need to reset reliably |

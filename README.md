@@ -10,8 +10,10 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 
 | Feature | Description |
 |---|---|
-| **Dashboard** | Stat cards (Total / Closed / Overdue / Due Today / Due This Week), task-by-status breakdown, team workload view |
+| **Dashboard** | Clickable stat cards (Total / Closed / Overdue / Due Today / Due This Week) that drill into a filtered task list, task-by-status breakdown, team workload view |
 | **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, labels, comments, attachments |
+| **Inline Editing** | Edit Priority, Assignee, Status, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
+| **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |
 | **Team Management** | Add/edit/delete members with role hierarchy (Lead / Senior / Junior / Intern) |
@@ -29,7 +31,7 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 |---|---|
 | Backend | Python 3.10 + FastAPI + SQLAlchemy + SQLite |
 | Frontend | React 18 + TypeScript + Vite 4 |
-| UI Theme | SB Admin 2 (Bootstrap 5) |
+| UI Theme | ArchitectUI (Bootstrap 5) + light/dark mode |
 | Font | Nunito (Google Fonts) |
 | Icons | Bootstrap Icons |
 | PDF Export | reportlab 4.2.2 |
@@ -215,5 +217,9 @@ TeamMan/
 - Dashboard: Closed stat card added; Tasks by Status and Team Workload use SID status codes correctly
 - Tasks filter bar: label-based filter replaces start-date filter
 - Settings: removed stale "Release management moved" notice
+- ArchitectUI Dashboard theme with light/dark mode toggle (persisted)
+- Clickable dashboard stat cards that drill into a preset-filtered task list, with a "Showing: …" filter banner and Clear button
+- Inline editing of Priority, Assignee, Status, Due Date, Labels, and feature-task Title directly in the task list
+- Mantis portal IDs link out to the issue (`view.php?id=…`) from both the list and the detail panel
 
 > Authentication (login screen) is planned for Phase 2.

@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.3 (Phase 1 Complete)
-**Last Updated:** 2026-06-02
+**Version:** 1.5 (Phase 1 Complete)
+**Last Updated:** 2026-06-25
 
 ---
 
@@ -109,9 +109,26 @@ Color is computed server-side on every task fetch (never stored):
 
 ## 7. Filtering & Sorting
 
-Filter tasks by: Assignee, Status, Type, End date range, Labels
+Filter tasks by: Assignee, Status, Type, End date (due) range, Labels
 
-Sort by: Priority (default) · Title · Start Date · End Date — direction toggleable
+Sort by: Priority (default) · Title · Due Date — direction toggleable
+
+- The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default `priority / ascending` view.
+
+## 7a. Inline Editing (Task List)
+
+Editable directly in the task list table without opening the modal:
+
+| Field | Editor | Save behavior |
+|---|---|---|
+| Priority | number popover (only when assigned) | Enter saves · Esc cancels · outside-click auto-saves |
+| Title | text popover (**feature tasks only**) | Enter saves · Esc cancels · outside-click auto-saves |
+| Due Date | date popover | Enter saves · Esc cancels · outside-click auto-saves |
+| Labels | checkbox popover | outside-click auto-saves |
+| Assignee | dropdown | saves on change |
+| Status | dropdown | saves on change |
+
+- Bug titles are not inline-editable (kept authoritative from the Mantis portal).
 
 ---
 
@@ -200,11 +217,19 @@ Sort by: Priority (default) · Title · Start Date · End Date — direction tog
 
 ## 14. Dashboard
 
-- Stat cards in order: Total Tasks → **Overdue** → Due Today → Due This Week
+- Stat cards in order: Total Tasks → **Closed** → Overdue → Due Today → Due This Week
+- Stat cards are **clickable** — each navigates to the Tasks page pre-filtered to that metric (e.g. Closed → `SID12`, Overdue → past due) and shows a filter banner
 - Tasks by Status: SID code + label + progress bar + percentage
 - Team Workload table: member name, role badge, active task count, capacity bar, load badge
 
 ---
+
+## 14a. User Interface & Theme
+
+- ArchitectUI Dashboard theme over Bootstrap 5; Nunito font
+- **Light / Dark mode** toggle in the topbar; the choice is persisted in the browser and restored on next launch
+- **Live search** in the topbar: debounced (300ms), matches task title or portal bug ID, shows up to 8 results; selecting one opens that task's detail panel on the Tasks page
+- Topbar shows a countdown badge for every active release
 
 ## 15. Cross-Platform
 
