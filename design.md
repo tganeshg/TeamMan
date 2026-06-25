@@ -177,7 +177,7 @@ In addition to the cards, the two panels below them are click-through to the sam
 - **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets filters and dismisses the banner.
 - **Inline editing in the list view** — click a cell to edit in place:
   - **Priority** (only when assigned), **Due Date**, **Labels** (checkbox popover), **Title** (feature tasks only): edit in a popover; **Enter** saves, **Escape** cancels, clicking outside auto-saves.
-  - **Assignee**, **Status**: dropdown that saves immediately on change.
+  - **Assignee**, **Status**, **Progress**, **Release**: dropdown that saves immediately on change (setting Progress to 100% auto-closes the task).
   - All inline saves go through `quickUpdate()`, which re-sends the full task payload with the single changed field patched, then reloads.
 - **ID column**: portal task IDs render as a link to `{portalUrl}/view.php?id={id}` (opens in new tab) when portal credentials are configured.
 - Edit modal: all fields including Release dropdown, **Checklist** section, and Relations section

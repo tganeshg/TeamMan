@@ -254,7 +254,7 @@ export default function Tasks() {
   ]))
 
   // Inline editing state
-  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' } | null>(null)
+  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release' } | null>(null)
   const [inlineValue, setInlineValue] = useState<any>(null)
   const inlineRef = useRef<HTMLDivElement>(null)
   const inlineEditRef = useRef<typeof inlineEdit>(null)
@@ -287,7 +287,7 @@ export default function Tasks() {
     load()
   }
 
-  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title', currentValue: any) => {
+  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release', currentValue: any) => {
     inlineEditRef.current = { taskId, field }
     inlineValueRef.current = currentValue
     setInlineEdit({ taskId, field })
@@ -806,14 +806,35 @@ export default function Tasks() {
                       )}
                     </td>
 
-                    {/* Progress */}
-                    <td>
-                      <div className="d-flex align-items-center gap-2" style={{ minWidth: 90 }}>
-                        <div className="progress flex-grow-1" style={{ height: 6 }}>
-                          <div className="progress-bar" style={{ width: `${task.progress}%`, background: task.progress === 100 ? '#1cc88a' : '#4e73df' }} />
+                    {/* Progress — inline editable */}
+                    <td
+                      style={{ position: 'relative' }}
+                      onClick={e => { e.stopPropagation(); openInline(task.id, 'progress', task.progress) }}
+                    >
+                      {inlineEdit?.taskId === task.id && inlineEdit?.field === 'progress' ? (
+                        <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 110, top: 0, left: 0 }}>
+                          <Form.Select
+                            size="sm"
+                            autoFocus
+                            className="inline-edit-select"
+                            defaultValue={task.progress}
+                            onChange={async e => { const val = Number(e.target.value); closeInline(); await quickUpdate(task.id, { progress: val }) }}
+                            onBlur={() => setTimeout(closeInline, 150)}
+                            onKeyDown={e => { if (e.key === 'Escape') closeInline() }}
+                          >
+                            {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <option key={p} value={p}>{p}%</option>)}
+                          </Form.Select>
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: 30, textAlign: 'right' }}>{task.progress}%</span>
-                      </div>
+                      ) : (
+                        <span className="inline-editable-cell">
+                          <span className="d-flex align-items-center gap-2" style={{ minWidth: 90 }}>
+                            <span className="progress flex-grow-1" style={{ height: 6 }}>
+                              <span className="progress-bar d-block" style={{ height: '100%', width: `${task.progress}%`, background: task.progress === 100 ? '#1cc88a' : '#4e73df' }} />
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: 30, textAlign: 'right' }}>{task.progress}%</span>
+                          </span>
+                        </span>
+                      )}
                     </td>
 
                     {/* Due Date — inline editable */}
@@ -894,14 +915,36 @@ export default function Tasks() {
                       )}
                     </td>
 
-                    {/* Release */}
-                    <td>
-                      {(() => {
-                        const rel = releases.find(r => r.id === task.release_id)
-                        return rel
-                          ? <span className="badge" style={{ background: '#eef0f8', color: '#4e73df', fontWeight: 600, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{rel.name}</span>
-                          : <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>—</span>
-                      })()}
+                    {/* Release — inline editable */}
+                    <td
+                      style={{ position: 'relative' }}
+                      onClick={e => { e.stopPropagation(); openInline(task.id, 'release', task.release_id ?? '') }}
+                    >
+                      {inlineEdit?.taskId === task.id && inlineEdit?.field === 'release' ? (
+                        <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 160, top: 0, left: 0 }}>
+                          <Form.Select
+                            size="sm"
+                            autoFocus
+                            className="inline-edit-select"
+                            defaultValue={task.release_id ?? ''}
+                            onChange={async e => { const val = e.target.value; closeInline(); await quickUpdate(task.id, { release_id: val ? Number(val) : null }) }}
+                            onBlur={() => setTimeout(closeInline, 150)}
+                            onKeyDown={e => { if (e.key === 'Escape') closeInline() }}
+                          >
+                            <option value="">— No Release —</option>
+                            {releases.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </Form.Select>
+                        </div>
+                      ) : (
+                        <span className="inline-editable-cell">
+                          {(() => {
+                            const rel = releases.find(r => r.id === task.release_id)
+                            return rel
+                              ? <span className="badge" style={{ background: '#eef0f8', color: '#4e73df', fontWeight: 600, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{rel.name}</span>
+                              : <span className="text-muted fst-italic" style={{ fontSize: '0.8rem' }}>—</span>
+                          })()}
+                        </span>
+                      )}
                     </td>
 
                     <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>

@@ -156,6 +156,8 @@ Editable directly in the task list table without opening the modal:
 | Labels | checkbox popover | outside-click auto-saves |
 | Assignee | dropdown | saves on change |
 | Status | dropdown | saves on change |
+| Progress | dropdown (0–100 by 10) | saves on change (100% auto-closes the task) |
+| Release | dropdown | saves on change |
 
 - Bug titles are not inline-editable (kept authoritative from the Mantis portal).
 
