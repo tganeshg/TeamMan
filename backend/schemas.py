@@ -75,6 +75,7 @@ class TaskBase(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: str = "SID00"
+    progress: int = 0           # 0..100 in steps of 10
     release_id: Optional[int] = None
 
 
@@ -93,6 +94,7 @@ class TaskUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = None
+    progress: Optional[int] = None
     assignee_id: Optional[int] = None
     priority: Optional[int] = None
     label_ids: Optional[List[int]] = None
@@ -303,6 +305,7 @@ class TodoItemUpdate(BaseModel):
     text: Optional[str] = None
     done: Optional[bool] = None
     position: Optional[int] = None
+    thread_id: Optional[int] = None   # move item to another thread
 
 
 class TodoItemOut(BaseModel):

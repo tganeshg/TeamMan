@@ -102,6 +102,7 @@ function PriorityDot({ p }: { p: number | null }) {
 export default function Tasks() {
   const routeLocation = useLocation()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [allTasks, setAllTasks] = useState<Task[]>([])   // unfiltered, for the relation picker
   const [members, setMembers] = useState<Member[]>([])
   const [labels, setLabels] = useState<Label[]>([])
   const [releases, setReleases] = useState<Release[]>([])
@@ -185,44 +186,48 @@ export default function Tasks() {
     load()
   }
 
-  // ── Exclude (NOT) filter builder ──────────────────────────────────────────
-  const [exField, setExField] = useState<string>('exclude_status')
-  const [exValue, setExValue] = useState<string>('')
+  // ── Include / Exclude filter builder (multi-value) ─────────────────────────
+  const [fbMode, setFbMode] = useState<'include' | 'exclude'>('include')
+  const [fbBase, setFbBase] = useState<string>('status')
+  const [fbValue, setFbValue] = useState<string>('')
 
-  const EX_FIELDS: { key: string; label: string; numeric: boolean }[] = [
-    { key: 'exclude_status', label: 'Status', numeric: false },
-    { key: 'exclude_assignee_id', label: 'Assignee', numeric: true },
-    { key: 'exclude_task_type', label: 'Type', numeric: false },
-    { key: 'exclude_label_ids', label: 'Labels', numeric: true },
-    { key: 'exclude_release_id', label: 'Release', numeric: true },
-    { key: 'exclude_priority', label: 'Priority', numeric: true },
+  const FILTER_FIELDS: { base: string; label: string; numeric: boolean }[] = [
+    { base: 'status', label: 'Status', numeric: false },
+    { base: 'assignee_id', label: 'Assignee', numeric: true },
+    { base: 'task_type', label: 'Type', numeric: false },
+    { base: 'label_ids', label: 'Labels', numeric: true },
+    { base: 'release_id', label: 'Release', numeric: true },
+    { base: 'priority', label: 'Priority', numeric: true },
+    { base: 'progress', label: 'Progress', numeric: true },
   ]
 
-  const exValueOptions = (): { value: string; label: string }[] => {
-    switch (exField) {
-      case 'exclude_status':      return Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: `${k} – ${v}` }))
-      case 'exclude_assignee_id': return members.map(m => ({ value: String(m.id), label: m.name }))
-      case 'exclude_task_type':   return [{ value: 'bug', label: 'Bug' }, { value: 'feature', label: 'Feature' }]
-      case 'exclude_label_ids':   return labels.map(l => ({ value: String(l.id), label: l.name }))
-      case 'exclude_release_id':  return releases.map(r => ({ value: String(r.id), label: r.name }))
-      case 'exclude_priority':    return [...new Set(tasks.map(t => t.priority).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => ({ value: String(p), label: `P${p}` }))
+  const fbValueOptions = (): { value: string; label: string }[] => {
+    switch (fbBase) {
+      case 'status':      return Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: `${k} – ${v}` }))
+      case 'assignee_id': return members.map(m => ({ value: String(m.id), label: m.name }))
+      case 'task_type':   return [{ value: 'bug', label: 'Bug' }, { value: 'feature', label: 'Feature' }]
+      case 'label_ids':   return labels.map(l => ({ value: String(l.id), label: l.name }))
+      case 'release_id':  return releases.map(r => ({ value: String(r.id), label: r.name }))
+      case 'priority':    return [...new Set(tasks.map(t => t.priority).filter((p): p is number => p != null))].sort((a, b) => a - b).map(p => ({ value: String(p), label: `P${p}` }))
+      case 'progress':    return [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(p => ({ value: String(p), label: `${p}%` }))
       default: return []
     }
   }
 
-  const addExclude = () => {
-    if (!exValue) return
-    const def = EX_FIELDS.find(d => d.key === exField)!
-    const parsed: any = def.numeric ? Number(exValue) : exValue
+  const addFilter = () => {
+    if (!fbValue) return
+    const def = FILTER_FIELDS.find(d => d.base === fbBase)!
+    const parsed: any = def.numeric ? Number(fbValue) : fbValue
+    const key = `${fbMode === 'include' ? 'in' : 'exclude'}_${fbBase}`
     setFilters(f => {
-      const cur = ((f as any)[exField] ?? []) as any[]
+      const cur = ((f as any)[key] ?? []) as any[]
       if (cur.includes(parsed)) return f
-      return { ...f, [exField]: [...cur, parsed] }
+      return { ...f, [key]: [...cur, parsed] }
     })
-    setExValue('')
+    setFbValue('')
   }
 
-  const removeExclude = (key: string, val: any) => {
+  const removeFilter = (key: string, val: any) => {
     setFilters(f => {
       const cur = ((f as any)[key] ?? []) as any[]
       const next = cur.filter(x => x !== val)
@@ -230,19 +235,23 @@ export default function Tasks() {
     })
   }
 
-  const exValueLabel = (key: string, val: any): string => {
-    switch (key) {
-      case 'exclude_status':      return `${val} – ${STATUS_LABEL[val] ?? val}`
-      case 'exclude_assignee_id': return members.find(m => m.id === val)?.name ?? `#${val}`
-      case 'exclude_task_type':   return val === 'bug' ? 'Bug' : 'Feature'
-      case 'exclude_label_ids':   return labels.find(l => l.id === val)?.name ?? `#${val}`
-      case 'exclude_release_id':  return releases.find(r => r.id === val)?.name ?? `#${val}`
-      case 'exclude_priority':    return `P${val}`
+  const fbValueLabel = (base: string, val: any): string => {
+    switch (base) {
+      case 'status':      return `${val} – ${STATUS_LABEL[val] ?? val}`
+      case 'assignee_id': return members.find(m => m.id === val)?.name ?? `#${val}`
+      case 'task_type':   return val === 'bug' ? 'Bug' : 'Feature'
+      case 'label_ids':   return labels.find(l => l.id === val)?.name ?? `#${val}`
+      case 'release_id':  return releases.find(r => r.id === val)?.name ?? `#${val}`
+      case 'priority':    return `P${val}`
+      case 'progress':    return `${val}%`
       default: return String(val)
     }
   }
-  const exFieldLabel = (key: string) => EX_FIELDS.find(d => d.key === key)?.label ?? key
-  const hasExcludes = EX_FIELDS.some(d => (((filters as any)[d.key] ?? []) as any[]).length > 0)
+  const fbFieldLabel = (base: string) => FILTER_FIELDS.find(d => d.base === base)?.label ?? base
+  const activeBuilderChips = FILTER_FIELDS.flatMap(d => ([
+    ...(((filters as any)[`in_${d.base}`] ?? []) as any[]).map(val => ({ mode: 'include' as const, base: d.base, key: `in_${d.base}`, val })),
+    ...(((filters as any)[`exclude_${d.base}`] ?? []) as any[]).map(val => ({ mode: 'exclude' as const, base: d.base, key: `exclude_${d.base}`, val })),
+  ]))
 
   // Inline editing state
   const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' } | null>(null)
@@ -352,7 +361,7 @@ export default function Tasks() {
 
   const openCreate = () => {
     setEditingTask(null)
-    setForm({ task_type: 'feature', status: 'SID00', label_ids: [], checklist: [] })
+    setForm({ task_type: 'feature', status: 'SID00', progress: 0, label_ids: [], checklist: [] })
     setMantisError('')
     setRelations([])
     setRelType('related_to')
@@ -382,6 +391,7 @@ export default function Tasks() {
       checklist: (detail?.checklist ?? []).map(c => ({ id: c.id, text: c.text, done: c.done, key: `db-${c.id}` })),
     })
     getRelations(task.id).then(setRelations).catch(() => setRelations([]))
+    getTasks().then(setAllTasks).catch(() => setAllTasks([]))   // full list for relation picker
     setShowModal(true)
   }
 
@@ -418,6 +428,7 @@ export default function Tasks() {
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
         status: form.status,
+        progress: form.progress != null ? Number(form.progress) : 0,
         assignee_id: form.assignee_id ? Number(form.assignee_id) : undefined,
         priority: form.priority ? Number(form.priority) : undefined,
         label_ids: form.label_ids ?? [],
@@ -559,46 +570,52 @@ export default function Tasks() {
             </Button>
           </div>
 
-          {/* Exclude (NOT) filter builder */}
+          {/* Include / Exclude filter builder (multi-value) */}
           <Row className="g-2 align-items-center mt-1">
             <Col xs="auto">
-              <span className="badge" style={{ background: '#fde8e8', color: '#c0392b', fontWeight: 700, fontSize: '0.72rem' }}>
-                <i className="bi bi-dash-circle me-1" />Exclude
+              <span className="badge" style={{ background: '#eef2ff', color: '#4e73df', fontWeight: 700, fontSize: '0.72rem' }}>
+                <i className="bi bi-funnel me-1" />Filter
               </span>
             </Col>
+            <Col xs="auto">
+              <Form.Select size="sm" style={{ width: 110 }} value={fbMode} onChange={e => setFbMode(e.target.value as 'include' | 'exclude')}>
+                <option value="include">Include</option>
+                <option value="exclude">Exclude</option>
+              </Form.Select>
+            </Col>
             <Col xs={12} sm={4} md={3} lg={2}>
-              <Form.Select size="sm" value={exField} onChange={e => { setExField(e.target.value); setExValue('') }}>
-                {EX_FIELDS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+              <Form.Select size="sm" value={fbBase} onChange={e => { setFbBase(e.target.value); setFbValue('') }}>
+                {FILTER_FIELDS.map(d => <option key={d.base} value={d.base}>{d.label}</option>)}
               </Form.Select>
             </Col>
             <Col xs={12} sm={5} md={3} lg={3}>
-              <Form.Select size="sm" value={exValue} onChange={e => setExValue(e.target.value)}>
-                <option value="">— select value to exclude —</option>
-                {exValueOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <Form.Select size="sm" value={fbValue} onChange={e => setFbValue(e.target.value)}>
+                <option value="">— select value —</option>
+                {fbValueOptions().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Form.Select>
             </Col>
             <Col xs="auto">
-              <Button size="sm" variant="outline-danger" onClick={addExclude} disabled={!exValue}>
+              <Button size="sm" variant={fbMode === 'include' ? 'outline-primary' : 'outline-danger'} onClick={addFilter} disabled={!fbValue}>
                 <i className="bi bi-plus me-1" />Add
               </Button>
             </Col>
           </Row>
 
-          {/* Active exclude chips */}
-          {hasExcludes && (
+          {/* Active include/exclude chips */}
+          {activeBuilderChips.length > 0 && (
             <div className="d-flex flex-wrap gap-1 mt-2">
-              {EX_FIELDS.flatMap(d =>
-                (((filters as any)[d.key] ?? []) as any[]).map(val => (
-                  <span
-                    key={`${d.key}-${val}`}
-                    className="badge d-inline-flex align-items-center gap-1"
-                    style={{ background: '#fff', color: '#c0392b', border: '1px solid #f1b0b0', fontWeight: 600, fontSize: '0.72rem' }}
-                  >
-                    ≠ {exFieldLabel(d.key)}: {exValueLabel(d.key, val)}
-                    <i className="bi bi-x" style={{ cursor: 'pointer' }} onClick={() => removeExclude(d.key, val)} />
-                  </span>
-                ))
-              )}
+              {activeBuilderChips.map(c => (
+                <span
+                  key={`${c.key}-${c.val}`}
+                  className="badge d-inline-flex align-items-center gap-1"
+                  style={c.mode === 'include'
+                    ? { background: '#fff', color: '#1a7f4b', border: '1px solid #a8d8bf', fontWeight: 600, fontSize: '0.72rem' }
+                    : { background: '#fff', color: '#c0392b', border: '1px solid #f1b0b0', fontWeight: 600, fontSize: '0.72rem' }}
+                >
+                  {c.mode === 'include' ? '=' : '≠'} {fbFieldLabel(c.base)}: {fbValueLabel(c.base, c.val)}
+                  <i className="bi bi-x" style={{ cursor: 'pointer' }} onClick={() => removeFilter(c.key, c.val)} />
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -618,6 +635,7 @@ export default function Tasks() {
                   <th style={{ width: 90 }}>Type</th>
                   <th style={{ width: 150 }}>Assignee</th>
                   <th style={{ width: 130 }}>Status</th>
+                  <th style={{ width: 120 }}>Progress</th>
                   <th style={{ width: 145 }}>Due Date</th>
                   <th>Labels</th>
                   <th style={{ width: 120 }}>Release</th>
@@ -788,6 +806,16 @@ export default function Tasks() {
                       )}
                     </td>
 
+                    {/* Progress */}
+                    <td>
+                      <div className="d-flex align-items-center gap-2" style={{ minWidth: 90 }}>
+                        <div className="progress flex-grow-1" style={{ height: 6 }}>
+                          <div className="progress-bar" style={{ width: `${task.progress}%`, background: task.progress === 100 ? '#1cc88a' : '#4e73df' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, minWidth: 30, textAlign: 'right' }}>{task.progress}%</span>
+                      </div>
+                    </td>
+
                     {/* Due Date — inline editable */}
                     <td
                       style={{ position: 'relative' }}
@@ -892,7 +920,7 @@ export default function Tasks() {
                 ))}
                 {tasks.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="text-center text-muted py-5">
+                    <td colSpan={11} className="text-center text-muted py-5">
                       <i className="bi bi-inbox fs-2 d-block mb-2" />
                       No tasks found. Click <strong>New Task</strong> to get started.
                     </td>
@@ -998,6 +1026,23 @@ export default function Tasks() {
               <Form.Select size="sm" value={form.status ?? 'SID00'} onChange={e => setField('status', e.target.value)}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
               </Form.Select>
+            </Col>
+
+            <Col md={6}>
+              <Form.Label className="small fw-semibold">Progress</Form.Label>
+              <Form.Select
+                size="sm"
+                value={form.progress ?? 0}
+                onChange={e => {
+                  const p = Number(e.target.value)
+                  setForm(f => ({ ...f, progress: p, ...(p === 100 ? { status: 'SID12' } : {}) }))
+                }}
+              >
+                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(p => <option key={p} value={p}>{p}%</option>)}
+              </Form.Select>
+              {Number(form.progress) === 100 && (
+                <Form.Text className="text-muted">100% auto-sets status to Closed.</Form.Text>
+              )}
             </Col>
 
             <Col md={6}>
@@ -1177,7 +1222,7 @@ export default function Tasks() {
                     onChange={e => { setRelTaskId(e.target.value); setRelError('') }}
                   >
                     <option value="">— select task —</option>
-                    {tasks
+                    {allTasks
                       .filter(t => t.id !== editingTask.id)
                       .map(t => (
                         <option key={t.id} value={t.id}>
@@ -1292,6 +1337,15 @@ export default function Tasks() {
                   </span>
                 </div>
                 <div className="detail-meta-row">
+                  <span className="detail-meta-label">Progress</span>
+                  <span className="d-flex align-items-center gap-2">
+                    <span className="progress" style={{ height: 6, width: 90 }}>
+                      <span className="progress-bar d-block" style={{ height: '100%', width: `${selectedTask.progress}%`, background: selectedTask.progress === 100 ? '#1cc88a' : '#4e73df' }} />
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{selectedTask.progress}%</span>
+                  </span>
+                </div>
+                <div className="detail-meta-row">
                   <span className="detail-meta-label">Priority</span>
                   <PriorityDot p={selectedTask.priority} />
                 </div>
@@ -1308,6 +1362,10 @@ export default function Tasks() {
                   <span style={{ color: selectedTask.color === 'red' ? '#dc3545' : undefined }}>
                     {selectedTask.end_date ? dayjs(selectedTask.end_date).format('DD MMM YYYY') : '—'}
                   </span>
+                </div>
+                <div className="detail-meta-row">
+                  <span className="detail-meta-label">Release</span>
+                  <span>{releases.find(r => r.id === selectedTask.release_id)?.name ?? <em className="text-muted">—</em>}</span>
                 </div>
                 {selectedTask.portal_task_id && (
                   <div className="detail-meta-row">

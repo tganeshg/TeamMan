@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.10 (Phase 1 Complete)
+**Version:** 1.12 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -170,9 +170,10 @@ In addition to the cards, the two panels below them are click-through to the sam
 ### Pages
 
 #### Tasks
-- Columns: P# · ID · Title · Type · Assignee · Status · Due Date · Labels · **Release** · actions. The Release column shows the task's release name (or — if none).
+- Columns: P# · ID · Title · Type · Assignee · Status · **Progress** · Due Date · Labels · **Release** · actions. The Release column shows the task's release name (or — if none); the Progress column shows a mini progress bar with the percentage.
+- **Progress (%)**: a fixed-increment select (0–100 by 10, default 0) in the task form. Setting **100% auto-closes the task** (status → SID12, `closed_at` set); reopening (status → non-terminal) clears `closed_at` and allows progress below 100 again. Saved with the task.
 - Filter bar + sortable table; **include** filters: Member, Status, Type, Label, **Release**, Due-date, plus sort field/direction (`release_id` filter is backed by the task-list endpoint). Filters are fully controlled — a dashboard preset or a cleared filter resets them to the `priority / asc` default.
-- **Exclude (NOT) filters**: a builder row (field + value + Add) lets the user exclude values for Status, Assignee, Type, Labels, Release, and Priority. Active excludes show as removable `≠ Field: Value` chips. Multiple values per field are supported, and exclude works together with include filters (AND). Sent to the API as comma-separated arrays (`exclude_status`, `exclude_assignee_id`, `exclude_task_type`, `exclude_label_ids`, `exclude_release_id`, `exclude_priority`); the backend applies them as SQL `NOT IN` / `NOT EXISTS`, keeping NULL assignee/release/priority rows visible.
+- **Include / Exclude filter builder**: a builder row (mode = Include/Exclude, field, value, Add) lets the user include **or** exclude values for Status, Assignee, Type, Labels, Release, Priority, and **Progress**. Active filters show as removable chips — green `= Field: Value` for include, red `≠ Field: Value` for exclude. Multiple values per field are supported, and they work together with the quick filters and each other (AND). Sent to the API as comma-separated arrays (`in_*` for include, `exclude_*` for exclude); the backend applies include as SQL `IN` / `EXISTS` and exclude as `NOT IN` / `NOT EXISTS`, keeping NULL assignee/release/priority rows visible on exclude.
 - **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets filters and dismisses the banner.
 - **Inline editing in the list view** — click a cell to edit in place:
   - **Priority** (only when assigned), **Due Date**, **Labels** (checkbox popover), **Title** (feature tasks only): edit in a popover; **Enter** saves, **Escape** cancels, clicking outside auto-saves.
@@ -199,7 +200,8 @@ In addition to the cards, the two panels below them are click-through to the sam
 - **Drag-and-drop reordering** (native HTML5 DnD, no extra deps):
   - Drag a thread card (grip handle ⋮⋮ in the header) onto another to reorder the thread list.
   - Drag a checklist item (grip handle) within a thread to reorder its items.
-  - Reorders are optimistic and auto-saved on drop (`PUT /todos/reorder`, `PUT /todo-items/reorder`); they revert on error. Order persists across refresh/restart via a `position` column. Checked/unchecked state is untouched by reordering.
+  - **Drag a checklist item onto another thread to move it there** (drop on an item to position it, or anywhere on the card to append to the end). The item's `thread_id` is updated (`PUT /todo-items/{id}` with `thread_id`) and both threads are reordered; checked/unchecked state is preserved.
+  - Item drag state is lifted to the Todo page so cross-thread moves work; reorders are optimistic and auto-saved on drop (`PUT /todos/reorder`, `PUT /todo-items/reorder`); they revert on error. Order persists across refresh/restart via a `position` column. Checked/unchecked state is untouched by reordering.
   - Visual feedback: the dragged element dims to 40%; the drop target is highlighted (card outline / item top-border). Thread and item DnD are guarded by separate state so they never interfere.
 
 #### Settings
@@ -231,6 +233,7 @@ In addition to the cards, the two panels below them are click-through to the sam
 | assignee_id | INTEGER FK | → team_members.id, SET NULL on delete |
 | priority | INTEGER | Per-member sequential position (required if assigned) |
 | status | TEXT | SID00–SID14 (default: SID00) |
+| progress | INTEGER | 0–100 in steps of 10 (default 0); 100 auto-closes. Added via idempotent startup migration |
 | start_date | DATE | Nullable |
 | end_date | DATE | Nullable |
 | release_id | INTEGER FK | → releases.id, SET NULL on delete |
@@ -416,3 +419,6 @@ Both exports generate the same document structure:
 | Added an `active` task-list filter (excludes SID12/SID13) | The workload count is non-terminal only; a plain assignee filter would include closed tasks and not match the number |
 | Exclude filters as comma-separated array params, applied as SQL NOT IN / NOT EXISTS | Pushes filtering to the DB (fast for large lists); multiple values per field; works alongside include filters as AND |
 | Exclude keeps NULL assignee/release/priority rows visible (`OR is NULL`) | A plain `NOT IN` drops NULL rows in SQL; excluding "Vipul" or "release X" shouldn't hide unassigned / unreleased tasks |
+| Progress 100% auto-sets status to Closed (one-directional) | Matches the requirement; reopening (status → non-terminal) leaves progress editable below 100 rather than forcing it |
+| Exclude builder generalised to an Include/Exclude builder | Progress (and other fields) need multi-value include as well as exclude; one consistent chip-based control covers both |
+| `tasks.progress` added via idempotent startup migration | `create_all` can't add a column to the existing table; default 0 keeps existing tasks backward-compatible |

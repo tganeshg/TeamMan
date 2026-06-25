@@ -60,6 +60,7 @@ class Task(Base):
     assignee_id = Column(Integer, ForeignKey("team_members.id", ondelete="SET NULL"), nullable=True)
     priority = Column(Integer, nullable=True)
     status = Column(String, nullable=False, default="SID00")
+    progress = Column(Integer, nullable=False, default=0)   # 0..100 in steps of 10
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     release_id = Column(Integer, ForeignKey("releases.id", ondelete="SET NULL"), nullable=True)

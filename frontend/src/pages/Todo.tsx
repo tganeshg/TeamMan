@@ -29,6 +29,10 @@ export default function Todo() {
   const [dragThreadId, setDragThreadId] = useState<number | null>(null)
   const [overThreadId, setOverThreadId] = useState<number | null>(null)
 
+  // Checklist-item drag-and-drop state (lifted to parent for cross-thread moves)
+  const [dragItem, setDragItem] = useState<{ id: number; threadId: number } | null>(null)
+  const [overItem, setOverItem] = useState<{ threadId: number; itemId: number } | null>(null)
+
   const load = () =>
     getTodoThreads().then(setThreads).finally(() => setLoading(false))
 
@@ -126,6 +130,56 @@ export default function Todo() {
     try { await reorderTodoItems(orderedIds) } catch { load() }
   }
 
+  // Drop a checklist item — reorder within a thread OR move it to another thread.
+  // targetItemId === null means "drop at the end of toThreadId".
+  const handleItemDrop = async (toThreadId: number, targetItemId: number | null) => {
+    if (!dragItem) return
+    const { id: itemId, threadId: fromThreadId } = dragItem
+    setDragItem(null)
+    setOverItem(null)
+
+    // Same thread → reorder
+    if (fromThreadId === toThreadId) {
+      if (targetItemId == null || targetItemId === itemId) return
+      const t = threads.find(x => x.id === toThreadId)
+      if (!t) return
+      const arr = [...t.items]
+      const from = arr.findIndex(i => i.id === itemId)
+      if (from < 0) return
+      const [moved] = arr.splice(from, 1)
+      const to = arr.findIndex(i => i.id === targetItemId)
+      arr.splice(to < 0 ? arr.length : to, 0, moved)
+      handleReorderItems(toThreadId, arr.map(i => i.id))
+      return
+    }
+
+    // Cross-thread → move
+    const source = threads.find(x => x.id === fromThreadId)
+    const target = threads.find(x => x.id === toThreadId)
+    if (!source || !target) return
+    const moved = source.items.find(i => i.id === itemId)
+    if (!moved) return
+
+    const newSource = source.items.filter(i => i.id !== itemId)
+    const newTarget = [...target.items]
+    const idx = targetItemId == null
+      ? newTarget.length
+      : (() => { const k = newTarget.findIndex(i => i.id === targetItemId); return k < 0 ? newTarget.length : k })()
+    newTarget.splice(idx, 0, { ...moved, thread_id: toThreadId })
+
+    setThreads(prev => prev.map(t =>
+      t.id === fromThreadId ? { ...t, items: newSource }
+      : t.id === toThreadId ? { ...t, items: newTarget }
+      : t
+    ))
+
+    try {
+      await updateTodoItem(itemId, { thread_id: toThreadId })
+      await reorderTodoItems(newTarget.map(i => i.id))
+      if (newSource.length) await reorderTodoItems(newSource.map(i => i.id))
+    } catch { load() }
+  }
+
   const headerEl = document.getElementById('page-header-actions')
 
   if (loading) return (
@@ -161,7 +215,7 @@ export default function Todo() {
             Open — {open.length}
           </div>
           <Row className="g-3 mb-4">
-            {open.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} onReorderItems={handleReorderItems} /></Col>)}
+            {open.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
           </Row>
         </>
       )}
@@ -173,7 +227,7 @@ export default function Todo() {
             Completed — {done.length}
           </div>
           <Row className="g-3">
-            {done.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} onReorderItems={handleReorderItems} /></Col>)}
+            {done.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
           </Row>
         </>
       )}
@@ -243,10 +297,14 @@ interface CardProps {
   setDragThreadId: React.Dispatch<React.SetStateAction<number | null>>
   setOverThreadId: React.Dispatch<React.SetStateAction<number | null>>
   onReorderThread: (draggedId: number, targetId: number) => void
-  onReorderItems: (threadId: number, orderedIds: number[]) => void
+  dragItem: { id: number; threadId: number } | null
+  overItem: { threadId: number; itemId: number } | null
+  setDragItem: React.Dispatch<React.SetStateAction<{ id: number; threadId: number } | null>>
+  setOverItem: React.Dispatch<React.SetStateAction<{ threadId: number; itemId: number } | null>>
+  onItemDrop: (toThreadId: number, targetItemId: number | null) => void
 }
 
-function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onToggleItem, onDeleteItem, onEditItem, itemText, setItemText, dragThreadId, overThreadId, setDragThreadId, setOverThreadId, onReorderThread, onReorderItems }: CardProps) {
+function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onToggleItem, onDeleteItem, onEditItem, itemText, setItemText, dragThreadId, overThreadId, setDragThreadId, setOverThreadId, onReorderThread, dragItem, overItem, setDragItem, setOverItem, onItemDrop }: CardProps) {
   const isDone = thread.status === 'done'
   const doneCount = thread.items.filter(i => i.done).length
   const total = thread.items.length
@@ -259,24 +317,12 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onTog
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
 
-  // Checklist-item drag-and-drop state (local to this thread)
-  const [dragItemId, setDragItemId] = useState<number | null>(null)
-  const [overItemId, setOverItemId] = useState<number | null>(null)
-
   const isThreadDragging = dragThreadId === thread.id
-  const isThreadOver = overThreadId === thread.id && dragThreadId !== null && dragThreadId !== thread.id
-
-  const handleItemDrop = (targetId: number) => {
-    if (dragItemId === null || dragItemId === targetId) return
-    const arr = [...thread.items]
-    const from = arr.findIndex(i => i.id === dragItemId)
-    if (from < 0) return
-    const [moved] = arr.splice(from, 1)
-    const to = arr.findIndex(i => i.id === targetId)
-    if (to < 0) return
-    arr.splice(to, 0, moved)
-    onReorderItems(thread.id, arr.map(i => i.id))
-  }
+  // Highlight the card as a drop target for thread reorder OR cross-thread item move
+  const isThreadOver = overThreadId === thread.id && (
+    (dragThreadId !== null && dragThreadId !== thread.id) ||
+    (dragItem != null && dragItem.threadId !== thread.id)
+  )
 
   const startEditItem = (item: TodoItem) => {
     setEditingItemId(item.id)
@@ -298,11 +344,15 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onTog
   return (
     <div
       className="card pd-card"
-      onDragOver={e => { if (dragThreadId !== null) { e.preventDefault(); setOverThreadId(thread.id) } }}
+      onDragOver={e => {
+        if (dragThreadId !== null) { e.preventDefault(); setOverThreadId(thread.id) }
+        else if (dragItem && dragItem.threadId !== thread.id) { e.preventDefault(); setOverThreadId(thread.id) }
+      }}
       onDragLeave={() => setOverThreadId(o => (o === thread.id ? null : o))}
       onDrop={e => {
         e.preventDefault()
         if (dragThreadId !== null) onReorderThread(dragThreadId, thread.id)
+        else if (dragItem) onItemDrop(thread.id, null)   // move item to end of this thread
         setDragThreadId(null); setOverThreadId(null)
       }}
       style={{
@@ -381,26 +431,30 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onTog
         )}
 
         {/* Items */}
-        <div style={{ marginBottom: 10 }}>
+        <div
+          style={{ marginBottom: 10 }}
+          onDragOver={e => { if (dragItem) { e.preventDefault() } }}
+          onDrop={e => { if (dragItem) { e.preventDefault(); e.stopPropagation(); onItemDrop(thread.id, null) } }}
+        >
           {thread.items.map(item => (
             <div
               key={item.id}
               className="d-flex align-items-center gap-2 py-1"
-              onDragOver={e => { if (dragItemId !== null) { e.preventDefault(); setOverItemId(item.id) } }}
-              onDragLeave={() => setOverItemId(o => (o === item.id ? null : o))}
-              onDrop={e => { e.preventDefault(); handleItemDrop(item.id); setDragItemId(null); setOverItemId(null) }}
+              onDragOver={e => { if (dragItem) { e.preventDefault(); setOverItem({ threadId: thread.id, itemId: item.id }) } }}
+              onDragLeave={() => setOverItem(o => (o && o.itemId === item.id && o.threadId === thread.id ? null : o))}
+              onDrop={e => { e.preventDefault(); e.stopPropagation(); onItemDrop(thread.id, item.id) }}
               style={{
                 borderBottom: '1px solid var(--card-border)',
-                borderTop: overItemId === item.id && dragItemId !== item.id ? '2px solid var(--primary)' : '2px solid transparent',
-                opacity: dragItemId === item.id ? 0.4 : 1,
+                borderTop: overItem?.itemId === item.id && overItem?.threadId === thread.id && dragItem?.id !== item.id ? '2px solid var(--primary)' : '2px solid transparent',
+                opacity: dragItem?.id === item.id ? 0.4 : 1,
               }}
             >
               <i
                 className="bi bi-grip-vertical"
                 draggable
-                onDragStart={e => { setDragItemId(item.id); e.dataTransfer.effectAllowed = 'move' }}
-                onDragEnd={() => { setDragItemId(null); setOverItemId(null) }}
-                title="Drag to reorder"
+                onDragStart={e => { setDragItem({ id: item.id, threadId: thread.id }); e.dataTransfer.effectAllowed = 'move' }}
+                onDragEnd={() => { setDragItem(null); setOverItem(null) }}
+                title="Drag to reorder or move to another thread"
                 style={{ cursor: 'grab', color: '#c8cbd8', flexShrink: 0, fontSize: '0.85rem' }}
               />
               <input

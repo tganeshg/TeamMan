@@ -30,6 +30,13 @@ def _ensure_schema():
                     {"p": pos, "id": thread_id},
                 )
 
+    task_cols = {c["name"] for c in insp.get_columns("tasks")}
+    if "progress" not in task_cols:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE tasks ADD COLUMN progress INTEGER NOT NULL DEFAULT 0"
+            ))
+
 
 _ensure_schema()
 

@@ -41,6 +41,7 @@ export interface Task {
   assignee: Member | null
   priority: number | null
   status: TaskStatus
+  progress: number
   start_date: string | null
   end_date: string | null
   color: TaskColor
@@ -167,12 +168,20 @@ export interface TaskFilters {
   end_date_to?: string
   release_id?: number
   active?: boolean
+  in_status?: string[]
+  in_assignee_id?: number[]
+  in_task_type?: string[]
+  in_label_ids?: number[]
+  in_release_id?: number[]
+  in_priority?: number[]
+  in_progress?: number[]
   exclude_status?: string[]
   exclude_assignee_id?: number[]
   exclude_task_type?: string[]
   exclude_label_ids?: number[]
   exclude_release_id?: number[]
   exclude_priority?: number[]
+  exclude_progress?: number[]
   sort_by?: string
   sort_order?: 'asc' | 'desc'
   search?: string

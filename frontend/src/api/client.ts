@@ -67,6 +67,7 @@ export const createTask = (data: {
   start_date?: string
   end_date?: string
   status?: string
+  progress?: number
   assignee_id?: number
   priority?: number
   label_ids?: number[]
@@ -81,6 +82,7 @@ export const updateTask = (id: number, data: Partial<{
   start_date: string
   end_date: string
   status: string
+  progress: number
   assignee_id: number
   priority: number
   label_ids: number[]
@@ -196,7 +198,7 @@ export const deleteTodoThread = (id: number) =>
 export const addTodoItem = (threadId: number, text: string) =>
   api.post<TodoItem>(`/todos/${threadId}/items`, { text }).then(r => r.data)
 
-export const updateTodoItem = (itemId: number, data: Partial<{ text: string; done: boolean }>) =>
+export const updateTodoItem = (itemId: number, data: Partial<{ text: string; done: boolean; position: number; thread_id: number }>) =>
   api.put<TodoItem>(`/todo-items/${itemId}`, data).then(r => r.data)
 
 export const deleteTodoItem = (itemId: number) =>

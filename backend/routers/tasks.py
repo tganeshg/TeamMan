@@ -153,12 +153,20 @@ def list_tasks(
     end_date_to: Optional[date] = Query(None),
     release_id: Optional[int] = Query(None),
     active: Optional[bool] = Query(None),
+    in_status: Optional[str] = Query(None),
+    in_assignee_id: Optional[str] = Query(None),
+    in_task_type: Optional[str] = Query(None),
+    in_label_ids: Optional[str] = Query(None),
+    in_release_id: Optional[str] = Query(None),
+    in_priority: Optional[str] = Query(None),
+    in_progress: Optional[str] = Query(None),
     exclude_status: Optional[str] = Query(None),
     exclude_assignee_id: Optional[str] = Query(None),
     exclude_task_type: Optional[str] = Query(None),
     exclude_label_ids: Optional[str] = Query(None),
     exclude_release_id: Optional[str] = Query(None),
     exclude_priority: Optional[str] = Query(None),
+    exclude_progress: Optional[str] = Query(None),
     sort_by: str = Query("priority"),
     sort_order: str = Query("asc"),
     search: Optional[str] = Query(None),
@@ -184,6 +192,22 @@ def list_tasks(
         if ids:
             q = q.filter(Task.labels.any(Label.id.in_(ids)))
 
+    # ── Include (IN) builder filters — multi-value, AND with the quick filters ──
+    inc = _csv_strs(in_status)
+    if inc: q = q.filter(Task.status.in_(inc))
+    inc = _csv_strs(in_task_type)
+    if inc: q = q.filter(Task.task_type.in_(inc))
+    inc = _csv_ints(in_assignee_id)
+    if inc: q = q.filter(Task.assignee_id.in_(inc))
+    inc = _csv_ints(in_release_id)
+    if inc: q = q.filter(Task.release_id.in_(inc))
+    inc = _csv_ints(in_priority)
+    if inc: q = q.filter(Task.priority.in_(inc))
+    inc = _csv_ints(in_progress)
+    if inc: q = q.filter(Task.progress.in_(inc))
+    inc = _csv_ints(in_label_ids)
+    if inc: q = q.filter(Task.labels.any(Label.id.in_(inc)))
+
     # ── Exclude (NOT) filters — applied as AND alongside include filters ──
     ex_status = _csv_strs(exclude_status)
     if ex_status:
@@ -203,6 +227,9 @@ def list_tasks(
     ex_labels = _csv_ints(exclude_label_ids)
     if ex_labels:    # hide tasks carrying ANY of the excluded labels
         q = q.filter(~Task.labels.any(Label.id.in_(ex_labels)))
+    ex_progress = _csv_ints(exclude_progress)
+    if ex_progress:
+        q = q.filter(Task.progress.notin_(ex_progress))
 
     col_map = {
         "priority": Task.priority, "title": Task.title,
@@ -220,6 +247,8 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     checklist = payload.checklist
     task_data = payload.model_dump(exclude={"label_ids", "checklist"})
 
+    if task_data.get("progress") == 100:
+        task_data["status"] = "SID12"   # 100% auto-closes the task
     if task_data.get("status") in _TERMINAL:
         task_data.setdefault("closed_at", date.today())
 
@@ -281,6 +310,8 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     new_assignee = data.get("assignee_id", task.assignee_id)
 
     # Apply all non-priority field changes first
+    if data.get("progress") == 100:
+        data["status"] = "SID12"   # 100% auto-closes the task
     new_status = data.get("status")
     if new_status:
         if new_status in _TERMINAL and task.status not in _TERMINAL:

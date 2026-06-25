@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.10 (Phase 1 Complete)
+**Version:** 1.12 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -43,6 +43,7 @@ PrimeDesk is a local team and task management application built for the Prime Te
 | Assignee | Team member assigned to the task |
 | Priority | Integer (1 = highest). Sequential per member, no gaps allowed |
 | Status | Custom SID00–SID14 status codes |
+| Progress | 0–100% in fixed steps of 10 (default 0); 100% auto-closes the task (see §3a) |
 | Start Date | Task start date |
 | End Date | Task due date |
 | Release | Which release this task belongs to (optional tag) |
@@ -65,6 +66,18 @@ PrimeDesk is a local team and task management application built for the Prime Te
 | SID05 | Dev Testing | SID13 | Released |
 | SID06 | Review | SID14 | On Hold |
 | SID07 | Rework | | |
+
+---
+
+## 3a. Progress
+
+- Each task has a **Progress (%)** field, selectable in fixed increments: 0, 10, 20, …, 100
+- Default for a new task is **0%**
+- Set in the create/edit task form; saved when the task is saved
+- **100% auto-closes** the task (status → Closed/SID12)
+- If a closed task is **reopened** (status changed to a non-terminal code), progress may be set back below 100%
+- Progress is shown in the task list as a percentage (with a progress bar), consistent with the form value
+- Backward compatible: existing tasks default to 0%
 
 ---
 
@@ -110,23 +123,24 @@ Color is computed server-side on every task fetch (never stored):
 
 ## 7. Filtering & Sorting
 
-Filter tasks by: Assignee, Status, Type, Release, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
+Quick filters: Assignee, Status, Type, Release, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
 
-The task list view shows columns: Type, Assignee, Status, Due Date, Labels, and **Release** (plus ID, Title, Priority).
+The task list view shows columns: Type, Assignee, Status, **Progress**, Due Date, Labels, and **Release** (plus ID, Title, Priority).
 
 Sort by: Priority (default) · Title · Due Date — direction toggleable
 
-### Exclude (NOT) Filters
+### Include / Exclude Filter Builder
 
-In addition to the include filters above, tasks can be **excluded** by value:
+Beyond the quick filters, a builder supports multi-value **Include** and **Exclude** filtering:
 
-- Supported fields: Status, Assignee, Type, Labels, Release, Priority
-- Built via a field + value + Add control; active excludes appear as removable `≠ Field: Value` chips
-- **Multiple excluded values** are supported (per field and across fields)
-- Include and exclude filters work **together** (combined as AND)
-- Examples: show all tasks except "Not Started"; except those assigned to a given user; except those in a given release
+- Mode: Include or Exclude
+- Supported fields: Status, Assignee, Type, Labels, Release, Priority, **Progress**
+- Built via a mode + field + value + Add control; active filters appear as removable chips — green `= Field: Value` (include) / red `≠ Field: Value` (exclude)
+- **Multiple values** are supported per field and across fields
+- Include and exclude filters work **together** with the quick filters (combined as AND)
+- Examples: show all tasks except "Not Started"; except those at 100% progress; only those at 0% or 50% progress; except a given user/release
 - Excluding an assignee / release / priority still shows tasks that have none of that field (NULL stays visible)
-- Existing include-filter behavior is unchanged; filtering is performed in the database (no client-side scan)
+- Existing quick-filter behavior is unchanged; filtering is performed in the database (no client-side scan)
 
 - The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default `priority / ascending` view.
 
@@ -246,6 +260,7 @@ Editable directly in the task list table without opening the modal:
 - **Drag-and-drop reordering:**
   - Threads can be dragged (grip handle) to reorder the TODO list; the new order is saved automatically and persists across refresh/restart.
   - Checklist items can be dragged within a thread to reorder; the new order is saved automatically.
+  - Checklist items can be dragged **from one thread to another** (drop on an item to position it, or on the card to append); the move is saved automatically and the item's checked/unchecked status is preserved.
   - Reordering must never change an item's checked/unchecked status.
   - Thread and checklist reordering work independently; visual feedback is shown while dragging.
 
