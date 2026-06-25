@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import date, timedelta
 
 from database import get_db
-from models import Task, Label, TeamMember
+from models import Task, Label, TeamMember, TaskChecklistItem
 from schemas import TaskCreate, TaskUpdate, TaskOut, TaskDetail, AssignRequest
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -32,7 +32,40 @@ def compute_color(task: Task) -> str:
 def enrich(task: Task) -> TaskOut:
     out = TaskOut.model_validate(task)
     out.color = compute_color(task)
+    out.checklist_total = len(task.checklist)
+    out.checklist_done = sum(1 for c in task.checklist if c.done)
     return out
+
+
+# ── Checklist ───────────────────────────────────────────────────────────────────
+
+def _sync_checklist(db: Session, task: Task, items: list) -> None:
+    """Replace the task's checklist with `items` (list of {id?, text, done}),
+    in the given order. Existing items (matched by id) are updated in place so
+    their completion status is preserved; missing ones are deleted; new ones
+    (no id) are inserted. Position follows list order. Blank rows are dropped."""
+    existing = {ci.id: ci for ci in task.checklist}
+    seen = set()
+    pos = 0
+    for it in items:
+        text = (it.get("text") or "").strip()
+        if not text:
+            continue
+        item_id = it.get("id")
+        done = bool(it.get("done", False))
+        if item_id and item_id in existing:
+            ci = existing[item_id]
+            ci.text = text
+            ci.done = done
+            ci.position = pos
+            seen.add(item_id)
+        else:
+            db.add(TaskChecklistItem(task_id=task.id, text=text, done=done, position=pos))
+        pos += 1
+    for item_id, ci in existing.items():
+        if item_id not in seen:
+            db.delete(ci)
+    db.flush()
 
 
 # ── Priority management ────────────────────────────────────────────────────────
@@ -100,14 +133,16 @@ def list_tasks(
     start_date_to: Optional[date] = Query(None),
     end_date_from: Optional[date] = Query(None),
     end_date_to: Optional[date] = Query(None),
+    active: Optional[bool] = Query(None),
     sort_by: str = Query("priority"),
     sort_order: str = Query("asc"),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels))
+    q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.checklist))
     if assignee_id is not None: q = q.filter(Task.assignee_id == assignee_id)
     if status:          q = q.filter(Task.status == status)
+    if active:          q = q.filter(Task.status.notin_(_TERMINAL))
     if task_type:       q = q.filter(Task.task_type == task_type)
     if start_date_from: q = q.filter(Task.start_date >= start_date_from)
     if start_date_to:   q = q.filter(Task.start_date <= start_date_to)
@@ -135,7 +170,8 @@ def list_tasks(
 @router.post("", response_model=TaskOut, status_code=201)
 def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     label_ids = payload.label_ids or []
-    task_data = payload.model_dump(exclude={"label_ids"})
+    checklist = payload.checklist
+    task_data = payload.model_dump(exclude={"label_ids", "checklist"})
 
     if task_data.get("status") in _TERMINAL:
         task_data.setdefault("closed_at", date.today())
@@ -145,6 +181,9 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
         task.labels = db.query(Label).filter(Label.id.in_(label_ids)).all()
     db.add(task)
     db.flush()   # get task.id before priority assignment
+
+    if checklist:
+        _sync_checklist(db, task, [c.model_dump() for c in checklist])
 
     # Assign priority AFTER the task exists so _apply_priority can find it
     if task.assignee_id and task.priority is not None:
@@ -170,11 +209,14 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).options(
         joinedload(Task.assignee), joinedload(Task.labels),
         joinedload(Task.comments), joinedload(Task.attachments),
+        joinedload(Task.checklist),
     ).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found.")
     out = TaskDetail.model_validate(task)
     out.color = compute_color(task)
+    out.checklist_total = len(task.checklist)
+    out.checklist_done = sum(1 for c in task.checklist if c.done)
     return out
 
 
@@ -186,6 +228,7 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
 
     data = payload.model_dump(exclude_unset=True)
     label_ids = data.pop("label_ids", None)
+    data.pop("checklist", None)   # handled separately below
 
     new_priority = data.pop("priority", None)
     new_assignee = data.get("assignee_id", task.assignee_id)
@@ -226,6 +269,11 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
             Task.id != task.id,
         ).count()
         task.priority = count + 1
+
+    # Sync checklist only when the field was explicitly provided (an empty
+    # list clears it; omitting the field leaves the checklist untouched).
+    if "checklist" in payload.model_fields_set:
+        _sync_checklist(db, task, [c.model_dump() for c in (payload.checklist or [])])
 
     db.commit()
     db.refresh(task)

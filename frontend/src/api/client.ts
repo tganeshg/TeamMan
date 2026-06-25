@@ -57,6 +57,8 @@ export const getTasks = (filters?: TaskFilters) => {
 export const getTask = (id: number) =>
   api.get<TaskDetail>(`/tasks/${id}`).then(r => r.data)
 
+export interface ChecklistItemInput { id?: number; text: string; done: boolean }
+
 export const createTask = (data: {
   title: string
   description?: string
@@ -68,6 +70,7 @@ export const createTask = (data: {
   assignee_id?: number
   priority?: number
   label_ids?: number[]
+  checklist?: ChecklistItemInput[]
 }) => api.post<Task>('/tasks', data).then(r => r.data)
 
 export const updateTask = (id: number, data: Partial<{
@@ -82,6 +85,7 @@ export const updateTask = (id: number, data: Partial<{
   priority: number
   label_ids: number[]
   release_id: number | null
+  checklist: ChecklistItemInput[]
 }>) => api.put<Task>(`/tasks/${id}`, data).then(r => r.data)
 
 export const deleteTask = (id: number) =>
@@ -175,7 +179,7 @@ export const exportPdfUrl = (releaseId: number) =>
 
 // ── Todos ──────────────────────────────────────────────────────
 export interface TodoItem { id: number; thread_id: number; text: string; done: boolean; position: number; created_at: string }
-export interface TodoThread { id: number; heading: string; description?: string; meeting?: string; status: string; created_at: string; updated_at: string; items: TodoItem[] }
+export interface TodoThread { id: number; heading: string; description?: string; meeting?: string; status: string; position: number; created_at: string; updated_at: string; items: TodoItem[] }
 
 export const getTodoThreads = () =>
   api.get<TodoThread[]>('/todos').then(r => r.data)
@@ -197,3 +201,9 @@ export const updateTodoItem = (itemId: number, data: Partial<{ text: string; don
 
 export const deleteTodoItem = (itemId: number) =>
   api.delete(`/todo-items/${itemId}`)
+
+export const reorderTodoThreads = (orderedIds: number[]) =>
+  api.put('/todos/reorder', { ordered_ids: orderedIds })
+
+export const reorderTodoItems = (orderedIds: number[]) =>
+  api.put('/todo-items/reorder', { ordered_ids: orderedIds })

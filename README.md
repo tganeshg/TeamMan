@@ -10,14 +10,15 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 
 | Feature | Description |
 |---|---|
-| **Dashboard** | Clickable stat cards (Total / Closed / Overdue / Due Today / Due This Week) that drill into a filtered task list, task-by-status breakdown, team workload view |
+| **Dashboard** | Clickable stat cards (Total / Closed / Overdue / Due Today / Due This Week), task-by-status breakdown, and team workload view — all drill into a filtered task list (clicking a status count or a member's active-task count opens the matching tasks) |
 | **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, labels, comments, attachments |
+| **Task Checklists** | Per-task checklist sub-items — add/edit/delete, toggle done, drag-and-drop reorder; managed in the task modal and persisted on save, shown in the detail panel and as a `done/total` badge in the list |
 | **Inline Editing** | Edit Priority, Assignee, Status, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
 | **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |
 | **Team Management** | Add/edit/delete members with role hierarchy (Lead / Senior / Junior / Intern) |
-| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress; inline edit for individual checklist items |
+| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress; collapsible threads (collapsed by default, click heading to expand); inline edit for checklist items; drag-and-drop reordering of both threads and checklist items (auto-saved, persists across restart) |
 | **Release Management** | Create and manage releases with active/completed status; topbar badge shows active release countdown |
 | **Performance Reports** | Per-release team report: summary stats, per-member breakdown, task detail table; export as PDF or Word |
 | **Labels** | User-defined color labels, attachable to tasks, filterable |
@@ -209,7 +210,7 @@ TeamMan/
 - Task relations (Duplicate / Parent / Child / Blocks / Blocked By / Related To)
 - Mantis portal integration
 - Team member hierarchy
-- Todo threads with meeting references and inline checklist item editing
+- Todo threads with meeting references, collapsible cards, inline checklist item editing, and drag-and-drop reordering
 - SB Admin 2 theme
 - Release management with active/completed status; multiple active release badges in topbar
 - Performance reports with PDF and Word export
@@ -221,5 +222,9 @@ TeamMan/
 - Clickable dashboard stat cards that drill into a preset-filtered task list, with a "Showing: …" filter banner and Clear button
 - Inline editing of Priority, Assignee, Status, Due Date, Labels, and feature-task Title directly in the task list
 - Mantis portal IDs link out to the issue (`view.php?id=…`) from both the list and the detail panel
+- New tasks with no priority auto-append to the end of the assignee's queue (priority optional on create)
+- Todo: collapsible threads (collapsed by default), vertical full-width layout, and drag-and-drop reordering of threads and checklist items (auto-saved, order persists across restart)
+- Task checklists: per-task sub-items with add/edit/delete, done toggle, and drag-and-drop reordering — persisted on task save, shown in the detail panel and as a progress badge in the list
+- Dashboard drill-through: clicking a Tasks-by-Status count or a Team Workload active-task count opens the matching filtered task list (new `active` filter keeps the workload counts exact)
 
 > Authentication (login screen) is planned for Phase 2.

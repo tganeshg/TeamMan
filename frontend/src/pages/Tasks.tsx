@@ -13,7 +13,10 @@ import {
   getRelations, addRelation, deleteRelation, getReleases,
   getPortalStatus,
 } from '../api/client'
-import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release } from '../types'
+import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release, ChecklistItem } from '../types'
+
+// Checklist row as held in the task modal's form state (key = stable client id)
+interface ChecklistRow { id?: number; text: string; done: boolean; key: string }
 
 const COLOR_HEX: Record<string, string> = {
   gray: '#858796', blue: '#4e73df', orange: '#f6c23e', red: '#e74a3b', green: '#1cc88a',
@@ -136,6 +139,52 @@ export default function Tasks() {
   const [relError, setRelError] = useState('')
   const [relSaving, setRelSaving] = useState(false)
 
+  // Checklist state (for modal) — managed in form.checklist; saved with the task
+  const [clText, setClText] = useState('')
+  const [clDragKey, setClDragKey] = useState<string | null>(null)
+  const [clOverKey, setClOverKey] = useState<string | null>(null)
+
+  const updateChecklist = (fn: (cl: ChecklistRow[]) => ChecklistRow[]) =>
+    setForm(f => ({ ...f, checklist: fn((f.checklist ?? []) as ChecklistRow[]) }))
+
+  const addChecklistItem = () => {
+    const t = clText.trim()
+    if (!t) return
+    updateChecklist(cl => [...cl, { key: `tmp-${Date.now()}-${cl.length}`, text: t, done: false }])
+    setClText('')
+  }
+  const editChecklistText = (key: string, text: string) =>
+    updateChecklist(cl => cl.map(i => (i.key === key ? { ...i, text } : i)))
+  const toggleChecklistDone = (key: string) =>
+    updateChecklist(cl => cl.map(i => (i.key === key ? { ...i, done: !i.done } : i)))
+  const deleteChecklistItem = (key: string) =>
+    updateChecklist(cl => cl.filter(i => i.key !== key))
+  const reorderChecklist = (dragKey: string, targetKey: string) => {
+    if (dragKey === targetKey) return
+    updateChecklist(cl => {
+      const arr = [...cl]
+      const from = arr.findIndex(i => i.key === dragKey)
+      if (from < 0) return cl
+      const [moved] = arr.splice(from, 1)
+      const to = arr.findIndex(i => i.key === targetKey)
+      if (to < 0) return cl
+      arr.splice(to, 0, moved)
+      return arr
+    })
+  }
+
+  // Toggle a checklist item's done state from the detail panel (saves immediately)
+  const toggleDetailChecklist = async (item: ChecklistItem) => {
+    if (!selectedTask) return
+    const updated = selectedTask.checklist.map(c => ({
+      id: c.id, text: c.text, done: c.id === item.id ? !c.done : c.done,
+    }))
+    await updateTask(selectedTask.id, { checklist: updated })
+    const d = await getTask(selectedTask.id)
+    setSelectedTask(d)
+    load()
+  }
+
   // Inline editing state
   const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' } | null>(null)
   const [inlineValue, setInlineValue] = useState<any>(null)
@@ -244,28 +293,35 @@ export default function Tasks() {
 
   const openCreate = () => {
     setEditingTask(null)
-    setForm({ task_type: 'feature', status: 'SID00', label_ids: [] })
+    setForm({ task_type: 'feature', status: 'SID00', label_ids: [], checklist: [] })
     setMantisError('')
     setRelations([])
     setRelType('related_to')
     setRelTaskId('')
     setRelError('')
+    setClText('')
     setShowModal(true)
   }
 
-  const openEdit = (task: Task) => {
+  const openEdit = async (task: Task) => {
     setEditingTask(task)
-    setForm({
-      ...task,
-      label_ids: task.labels.map(l => l.id),
-      start_date: task.start_date ?? '',
-      end_date: task.end_date ?? '',
-      release_id: task.release_id ?? null,
-    })
     setMantisError('')
     setRelType('related_to')
     setRelTaskId('')
     setRelError('')
+    setClText('')
+    // Fetch full detail to load the checklist before the modal opens, so a
+    // quick Save can't clear an unloaded checklist.
+    const detail = await getTask(task.id).catch(() => null)
+    const src = detail ?? task
+    setForm({
+      ...src,
+      label_ids: src.labels.map(l => l.id),
+      start_date: src.start_date ?? '',
+      end_date: src.end_date ?? '',
+      release_id: src.release_id ?? null,
+      checklist: (detail?.checklist ?? []).map(c => ({ id: c.id, text: c.text, done: c.done, key: `db-${c.id}` })),
+    })
     getRelations(task.id).then(setRelations).catch(() => setRelations([]))
     setShowModal(true)
   }
@@ -307,6 +363,7 @@ export default function Tasks() {
         priority: form.priority ? Number(form.priority) : undefined,
         label_ids: form.label_ids ?? [],
         release_id: form.release_id ? Number(form.release_id) : null,
+        checklist: ((form.checklist ?? []) as ChecklistRow[]).map(i => ({ id: i.id, text: i.text, done: i.done })),
       }
       if (editingTask) {
         await updateTask(editingTask.id, payload)
@@ -543,7 +600,18 @@ export default function Tasks() {
                           />
                         </div>
                       ) : (
-                        task.title
+                        <>
+                          {task.title}
+                          {task.checklist_total > 0 && (
+                            <span
+                              className="badge ms-2"
+                              style={{ background: '#eef0f8', color: '#6b6f8a', fontWeight: 600, fontSize: '0.68rem' }}
+                              title="Checklist progress"
+                            >
+                              <i className="bi bi-check2-square me-1" />{task.checklist_done}/{task.checklist_total}
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td>
@@ -865,6 +933,80 @@ export default function Tasks() {
               </div>
             </Col>
 
+            {/* ── Checklist ── */}
+            <Col xs={12}>
+              <hr className="my-1" />
+              <Form.Label className="small fw-semibold d-flex align-items-center gap-2">
+                <i className="bi bi-check2-square text-primary" />
+                Checklist
+                {((form.checklist ?? []) as ChecklistRow[]).length > 0 && (
+                  <span className="text-muted fw-normal">
+                    ({((form.checklist ?? []) as ChecklistRow[]).filter(i => i.done).length}/{((form.checklist ?? []) as ChecklistRow[]).length})
+                  </span>
+                )}
+              </Form.Label>
+
+              {((form.checklist ?? []) as ChecklistRow[]).map(item => (
+                <div
+                  key={item.key}
+                  className="d-flex align-items-center gap-2 mb-1"
+                  onDragOver={e => { if (clDragKey) { e.preventDefault(); setClOverKey(item.key) } }}
+                  onDragLeave={() => setClOverKey(k => (k === item.key ? null : k))}
+                  onDrop={e => { e.preventDefault(); if (clDragKey) reorderChecklist(clDragKey, item.key); setClDragKey(null); setClOverKey(null) }}
+                  style={{
+                    borderTop: clOverKey === item.key && clDragKey !== item.key ? '2px solid var(--primary)' : '2px solid transparent',
+                    opacity: clDragKey === item.key ? 0.4 : 1,
+                  }}
+                >
+                  <i
+                    className="bi bi-grip-vertical"
+                    draggable
+                    onDragStart={e => { setClDragKey(item.key); e.dataTransfer.effectAllowed = 'move' }}
+                    onDragEnd={() => { setClDragKey(null); setClOverKey(null) }}
+                    title="Drag to reorder"
+                    style={{ cursor: 'grab', color: '#c8cbd8', flexShrink: 0 }}
+                  />
+                  <input
+                    type="checkbox"
+                    checked={item.done}
+                    onChange={() => toggleChecklistDone(item.key)}
+                    style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: '#1cc88a' }}
+                  />
+                  <Form.Control
+                    size="sm"
+                    value={item.text}
+                    onChange={e => editChecklistText(item.key, e.target.value)}
+                    placeholder="Checklist item"
+                    style={{ textDecoration: item.done ? 'line-through' : 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ padding: '1px 6px', color: '#dee2e6', lineHeight: 1 }}
+                    onClick={() => deleteChecklistItem(item.key)}
+                  >
+                    <i className="bi bi-x" />
+                  </button>
+                </div>
+              ))}
+
+              <div className="d-flex gap-2 mt-1">
+                <Form.Control
+                  size="sm"
+                  placeholder="Add checklist item..."
+                  value={clText}
+                  onChange={e => setClText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem() } }}
+                />
+                <Button size="sm" variant="outline-primary" onClick={addChecklistItem} style={{ flexShrink: 0 }}>
+                  <i className="bi bi-plus" />
+                </Button>
+              </div>
+              <Form.Text className="text-muted">
+                Drag <i className="bi bi-grip-vertical" /> to reorder. Saved with the task.
+              </Form.Text>
+            </Col>
+
             {/* ── Relations ── */}
             <Col xs={12}>
               <hr className="my-1" />
@@ -1089,6 +1231,32 @@ export default function Tasks() {
                 <div className="card border-0 bg-light rounded-3 p-3 mb-3">
                   <small className="text-muted fw-semibold mb-1 d-block">DESCRIPTION</small>
                   <p className="mb-0 small">{selectedTask.description}</p>
+                </div>
+              )}
+
+              {/* Checklist */}
+              {selectedTask.checklist.length > 0 && (
+                <div className="mb-3">
+                  <div className="mb-1 d-flex align-items-center gap-2">
+                    <i className="bi bi-check2-square text-primary" />
+                    <span className="fw-semibold small">Checklist</span>
+                    <span className="text-muted small">
+                      ({selectedTask.checklist.filter(c => c.done).length}/{selectedTask.checklist.length})
+                    </span>
+                  </div>
+                  {selectedTask.checklist.map(item => (
+                    <div key={item.id} className="d-flex align-items-center gap-2 py-1" style={{ borderBottom: '1px solid var(--card-border)' }}>
+                      <input
+                        type="checkbox"
+                        checked={item.done}
+                        onChange={() => toggleDetailChecklist(item)}
+                        style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, accentColor: '#1cc88a' }}
+                      />
+                      <span style={{ flex: 1, fontSize: '0.875rem', color: item.done ? 'var(--text-muted)' : 'var(--text-dark)', textDecoration: item.done ? 'line-through' : 'none' }}>
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 

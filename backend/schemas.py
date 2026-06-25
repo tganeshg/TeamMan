@@ -51,6 +51,22 @@ class LabelOut(LabelBase):
 
 # ── Tasks ─────────────────────────────────────────────────────────────────────
 
+class ChecklistItemIn(BaseModel):
+    id: Optional[int] = None   # present = existing item, absent = new
+    text: str
+    done: bool = False
+
+
+class ChecklistItemOut(BaseModel):
+    id: int
+    text: str
+    done: bool
+    position: int
+
+    class Config:
+        from_attributes = True
+
+
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -66,6 +82,7 @@ class TaskCreate(TaskBase):
     assignee_id: Optional[int] = None
     priority: Optional[int] = None
     label_ids: Optional[List[int]] = []
+    checklist: Optional[List[ChecklistItemIn]] = None
 
 
 class TaskUpdate(BaseModel):
@@ -80,6 +97,7 @@ class TaskUpdate(BaseModel):
     priority: Optional[int] = None
     label_ids: Optional[List[int]] = None
     release_id: Optional[int] = None
+    checklist: Optional[List[ChecklistItemIn]] = None
 
 
 class AssignRequest(BaseModel):
@@ -96,6 +114,8 @@ class TaskOut(TaskBase):
     labels: List[LabelOut] = []
     release_id: Optional[int] = None
     closed_at: Optional[date] = None
+    checklist_total: int = 0
+    checklist_done: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -106,6 +126,7 @@ class TaskOut(TaskBase):
 class TaskDetail(TaskOut):
     comments: List[CommentOut] = []
     attachments: List[AttachmentOut] = []
+    checklist: List[ChecklistItemOut] = []
 
 
 # ── Comments ──────────────────────────────────────────────────────────────────
@@ -268,6 +289,10 @@ class TaskFilter(BaseModel):
 
 # ── Todo ──────────────────────────────────────────────────────────────────────
 
+class ReorderRequest(BaseModel):
+    ordered_ids: List[int]
+
+
 class TodoItemCreate(BaseModel):
     text: str
     done: bool = False
@@ -311,6 +336,7 @@ class TodoThreadOut(BaseModel):
     description: Optional[str] = None
     meeting: Optional[str] = None
     status: str
+    position: int
     created_at: datetime
     updated_at: datetime
     items: List[TodoItemOut] = []

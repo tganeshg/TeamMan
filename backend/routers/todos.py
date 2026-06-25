@@ -10,16 +10,36 @@ router = APIRouter(tags=["todos"])
 
 @router.get("/todos", response_model=list[schemas.TodoThreadOut])
 def list_threads(db: Session = Depends(get_db)):
-    return db.query(models.TodoThread).order_by(models.TodoThread.created_at.desc()).all()
+    return (
+        db.query(models.TodoThread)
+        .order_by(models.TodoThread.position.asc(), models.TodoThread.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/todos", response_model=schemas.TodoThreadOut)
 def create_thread(data: schemas.TodoThreadCreate, db: Session = Depends(get_db)):
-    thread = models.TodoThread(**data.model_dump())
+    # New threads appear on top: shift everyone down, insert at position 0.
+    db.query(models.TodoThread).update(
+        {models.TodoThread.position: models.TodoThread.position + 1}
+    )
+    thread = models.TodoThread(**data.model_dump(), position=0)
     db.add(thread)
     db.commit()
     db.refresh(thread)
     return thread
+
+
+# Reorder must be declared BEFORE "/todos/{thread_id}" so "reorder" is not
+# captured as a thread_id path parameter.
+@router.put("/todos/reorder")
+def reorder_threads(data: schemas.ReorderRequest, db: Session = Depends(get_db)):
+    for pos, thread_id in enumerate(data.ordered_ids):
+        db.query(models.TodoThread).filter(models.TodoThread.id == thread_id).update(
+            {models.TodoThread.position: pos}
+        )
+    db.commit()
+    return {"ok": True}
 
 
 @router.put("/todos/{thread_id}", response_model=schemas.TodoThreadOut)
@@ -57,6 +77,17 @@ def add_item(thread_id: int, data: schemas.TodoItemCreate, db: Session = Depends
     db.commit()
     db.refresh(item)
     return item
+
+
+# Reorder must be declared BEFORE "/todo-items/{item_id}".
+@router.put("/todo-items/reorder")
+def reorder_items(data: schemas.ReorderRequest, db: Session = Depends(get_db)):
+    for pos, item_id in enumerate(data.ordered_ids):
+        db.query(models.TodoItem).filter(models.TodoItem.id == item_id).update(
+            {models.TodoItem.position: pos}
+        )
+    db.commit()
+    return {"ok": True}
 
 
 @router.put("/todo-items/{item_id}", response_model=schemas.TodoItemOut)

@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.5 (Phase 1 Complete)
+**Version:** 1.8 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -163,6 +163,10 @@ Rendered as `arch-stat-card arch-stat-card--clickable`. Each card shows a "View 
 | 4 | Due Today | `#DD5600` | `end_date_from = end_date_to = today` |
 | 5 | Due This Week | `#2FA4E7` | `end_date_from = today`, `end_date_to = +7d` |
 
+In addition to the cards, the two panels below them are click-through to the same preset-filtered task list:
+- **Tasks by Status** — clicking a status count navigates with `preset = { status: <SIDxx> }` (matches the displayed count exactly).
+- **Team Workload** — clicking a member's active-tasks count navigates with `preset = { assignee_id: <id>, active: true }`. The `active` filter (status not in SID12/SID13) makes the list match the displayed active count even when the member has closed tasks.
+
 ### Pages
 
 #### Tasks
@@ -173,8 +177,9 @@ Rendered as `arch-stat-card arch-stat-card--clickable`. Each card shows a "View 
   - **Assignee**, **Status**: dropdown that saves immediately on change.
   - All inline saves go through `quickUpdate()`, which re-sends the full task payload with the single changed field patched, then reloads.
 - **ID column**: portal task IDs render as a link to `{portalUrl}/view.php?id={id}` (opens in new tab) when portal credentials are configured.
-- Edit modal: all fields including Release dropdown and Relations section
-- Detail offcanvas: meta, labels, description, comments, attachments; Portal ID also links out to Mantis
+- Edit modal: all fields including Release dropdown, **Checklist** section, and Relations section
+- Detail offcanvas: meta, labels, description, **checklist**, comments, attachments; Portal ID also links out to Mantis
+- **Checklist** (per task): add / edit (type in place) / delete / toggle done / **drag-and-drop reorder** (grip handle, native HTML5). Edited in the task modal and **persisted when the task is saved**; the detail offcanvas shows the checklist in order with toggleable checkboxes (saved immediately). The task list shows a `done/total` progress badge for tasks that have a checklist. Completion status is preserved across edit/reorder.
 
 #### Reports
 - Left panel: release list with edit (✏) button per release
@@ -186,7 +191,14 @@ Rendered as `arch-stat-card arch-stat-card--clickable`. Each card shows a "View 
 - Release badges: all active releases rendered as countdown badges (overdue = red, ≤7 days = yellow, healthy = green)
 
 #### Todo
+- Threads are stacked **vertically, full-width** (one per row) in each of the Open and Completed sections.
+- **Collapsible threads**: each thread is collapsed by default, showing only the heading (chevron ▶). Clicking the heading expands it (▼) to reveal description, progress, and checklist items; clicking again collapses. Expand state is per-thread and independent.
 - Checklist items support inline editing: click pencil icon → input field with current text; save on Enter/blur/✓, cancel on Escape/✗
+- **Drag-and-drop reordering** (native HTML5 DnD, no extra deps):
+  - Drag a thread card (grip handle ⋮⋮ in the header) onto another to reorder the thread list.
+  - Drag a checklist item (grip handle) within a thread to reorder its items.
+  - Reorders are optimistic and auto-saved on drop (`PUT /todos/reorder`, `PUT /todo-items/reorder`); they revert on error. Order persists across refresh/restart via a `position` column. Checked/unchecked state is untouched by reordering.
+  - Visual feedback: the dragged element dims to 40%; the drop target is highlighted (card outline / item top-border). Thread and item DnD are guarded by separate state so they never interfere.
 
 #### Settings
 - Portal credentials (Mantis URL + API token)
@@ -233,8 +245,22 @@ Rendered as `arch-stat-card arch-stat-card--clickable`. Each card shows a "View 
 | relation_type | TEXT | duplicate / parent / child / blocks / blocked_by / related_to |
 | created_at | DATETIME | Auto |
 
+### `task_checklist_items`
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER PK | |
+| task_id | INTEGER FK | → tasks.id (CASCADE DELETE) |
+| text | TEXT | Not null |
+| done | BOOLEAN | Default false |
+| position | INTEGER | Drag-and-drop order within the task |
+| created_at | DATETIME | Auto |
+
+— created automatically by `create_all` (new table, so no migration needed).
+
 ### `team_members`, `labels`, `task_labels`, `comments`, `attachments`, `portal_credentials`, `app_config`, `todo_threads`, `todo_items`
-— unchanged from v1.2 (see previous version for full schema)
+— largely unchanged from v1.2 (see previous version for full schema).
+
+`todo_threads` and `todo_items` each carry an integer `position` column for manual drag-and-drop ordering (threads sorted by `position` asc; items by `position` within a thread). The `position` column on `todo_threads` is added at startup by an idempotent migration (`_ensure_schema` in `main.py`), since `create_all` does not alter existing tables.
 
 ---
 
@@ -375,3 +401,14 @@ Both exports generate the same document structure:
 | Inline list editing re-sends full task payload via `quickUpdate` | Reuses the existing `PUT /tasks/{id}` contract; no new partial-update endpoint needed |
 | Inline title editing limited to feature tasks | Bug titles come from Mantis and should stay authoritative |
 | Tasks filter bar made fully controlled | Preset filters from the dashboard and "Clear filter" need to reset reliably |
+| Todo threads collapsed by default | Keeps the board scannable; matches the "show heading only, expand on click" requirement |
+| Native HTML5 drag-and-drop for Todo reordering (no library) | Avoids adding a DnD dependency incompatible with the pinned Node 16 / Vite 4 toolchain |
+| Todo order persisted via `position` column + reorder endpoints | Order must survive refresh/restart; reorder endpoints declared before `/{id}` routes so "reorder" is not captured as an id |
+| Todo schema change applied via idempotent startup migration | No Alembic in the project; `create_all` cannot add a column to an existing table |
+| Todo threads stacked full-width (one per row) | Avoids the side-by-side height mismatch when one card is expanded; simpler vertical drag-reorder |
+| Task checklist managed in the modal, persisted on task Save | Matches "persist the checklist order when the task is saved"; works for new (unsaved) tasks too, unlike relations |
+| Checklist synced (matched by id) rather than replaced wholesale | Preserves item ids and completion status across edits and reordering |
+| Checklist carried in the task create/update payload (no dedicated CRUD endpoints) | One round-trip per save; reuses the existing task endpoints; detail-panel toggles reuse the same update path |
+| `task_checklist_items` created by `create_all` | Brand-new table needs no migration, unlike the `todo_threads.position` column |
+| Dashboard status/workload counts click through to the filtered task list | Reuses the stat-card preset mechanism; lets the user jump from a metric to the exact rows behind it |
+| Added an `active` task-list filter (excludes SID12/SID13) | The workload count is non-terminal only; a plain assignee filter would include closed tasks and not match the number |

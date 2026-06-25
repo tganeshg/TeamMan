@@ -24,6 +24,13 @@ export type TaskType = 'bug' | 'feature'
 
 export type TaskColor = 'gray' | 'blue' | 'orange' | 'red' | 'green'
 
+export interface ChecklistItem {
+  id: number
+  text: string
+  done: boolean
+  position: number
+}
+
 export interface Task {
   id: number
   portal_task_id: string | null
@@ -40,6 +47,8 @@ export interface Task {
   labels: Label[]
   release_id: number | null
   closed_at: string | null
+  checklist_total: number
+  checklist_done: number
   created_at: string
   updated_at: string
 }
@@ -47,6 +56,7 @@ export interface Task {
 export interface TaskDetail extends Task {
   comments: Comment[]
   attachments: Attachment[]
+  checklist: ChecklistItem[]
 }
 
 export interface Comment {
@@ -155,6 +165,7 @@ export interface TaskFilters {
   start_date_to?: string
   end_date_from?: string
   end_date_to?: string
+  active?: boolean
   sort_by?: string
   sort_order?: 'asc' | 'desc'
   search?: string

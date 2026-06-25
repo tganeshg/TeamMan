@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.5 (Phase 1 Complete)
+**Version:** 1.8 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -51,6 +51,7 @@ PrimeDesk is a local team and task management application built for the Prime Te
 | Comments | Append-only daily progress notes (timestamped, author tagged) |
 | Attachments | One or more files per task (stored locally, downloadable) |
 | Relations | Typed links to other tasks |
+| Checklist | Ordered sub-items with done state (see §10a) |
 
 ### Task Status Codes
 
@@ -109,7 +110,7 @@ Color is computed server-side on every task fetch (never stored):
 
 ## 7. Filtering & Sorting
 
-Filter tasks by: Assignee, Status, Type, End date (due) range, Labels
+Filter tasks by: Assignee, Status, Type, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
 
 Sort by: Priority (default) · Title · Due Date — direction toggleable
 
@@ -168,6 +169,19 @@ Editable directly in the task list table without opening the modal:
 
 ---
 
+## 10a. Task Checklist
+
+- Each task can have an ordered list of checklist (sub-) items, each with text and a done flag
+- Managed in the **Edit / New Task** modal: add, edit (type in place), delete, toggle done, and **drag-and-drop reorder**
+- The checklist (including its order) is **persisted when the task is saved**; checklists can be added on a brand-new task too
+- The **task detail panel** displays the checklist in order with toggleable checkboxes (saved immediately)
+- The **task list** shows a `done/total` progress badge for tasks that have a checklist
+- Completion status of existing items is preserved through editing and reordering
+- Deleting a task removes its checklist items (cascade)
+- The drag-and-drop order is reflected wherever the checklist is displayed
+
+---
+
 ## 11. Release Management
 
 - Releases are created from the **Reports** page
@@ -212,6 +226,14 @@ Editable directly in the task list table without opening the modal:
 | Items | Checklist of action items |
 
 - Open threads on top, Completed below; threads can be reopened
+- Threads are listed vertically, one per row (full width)
+- **Collapsible:** threads are collapsed by default and show only the heading; clicking the heading expands/collapses the checklist. Each thread expands independently.
+- Checklist items support inline editing (pencil → edit; Enter/blur saves, Esc cancels)
+- **Drag-and-drop reordering:**
+  - Threads can be dragged (grip handle) to reorder the TODO list; the new order is saved automatically and persists across refresh/restart.
+  - Checklist items can be dragged within a thread to reorder; the new order is saved automatically.
+  - Reordering must never change an item's checked/unchecked status.
+  - Thread and checklist reordering work independently; visual feedback is shown while dragging.
 
 ---
 
@@ -219,8 +241,8 @@ Editable directly in the task list table without opening the modal:
 
 - Stat cards in order: Total Tasks → **Closed** → Overdue → Due Today → Due This Week
 - Stat cards are **clickable** — each navigates to the Tasks page pre-filtered to that metric (e.g. Closed → `SID12`, Overdue → past due) and shows a filter banner
-- Tasks by Status: SID code + label + progress bar + percentage
-- Team Workload table: member name, role badge, active task count, capacity bar, load badge
+- Tasks by Status: SID code + label + progress bar + percentage. **Clicking a status count** opens the Tasks page filtered to that status (count matches the list).
+- Team Workload table: member name, role badge, active task count, capacity bar, load badge. **Clicking a member's active-task count** opens the Tasks page filtered to that member's active (non-terminal) tasks.
 
 ---
 

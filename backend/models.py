@@ -72,6 +72,20 @@ class Task(Base):
     labels = relationship("Label", secondary=task_labels, back_populates="tasks")
     comments = relationship("Comment", back_populates="task", cascade="all, delete-orphan", order_by="Comment.created_at")
     attachments = relationship("Attachment", back_populates="task", cascade="all, delete-orphan")
+    checklist = relationship("TaskChecklistItem", back_populates="task", cascade="all, delete-orphan", order_by="TaskChecklistItem.position")
+
+
+class TaskChecklistItem(Base):
+    __tablename__ = "task_checklist_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    text = Column(String, nullable=False)
+    done = Column(Boolean, nullable=False, default=False)
+    position = Column(Integer, nullable=False, default=0)   # drag-and-drop order
+    created_at = Column(DateTime, default=func.now())
+
+    task = relationship("Task", back_populates="checklist")
 
 
 class Comment(Base):
@@ -134,6 +148,7 @@ class TodoThread(Base):
     description = Column(Text, nullable=True)
     meeting = Column(String, nullable=True)   # free-text meeting reference
     status = Column(String, nullable=False, default="open")  # open | done
+    position = Column(Integer, nullable=False, default=0)     # manual drag-and-drop order
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

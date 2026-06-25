@@ -141,7 +141,11 @@ export default function Dashboard() {
                         {STATUS_LABEL[status] ?? status}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#3a3f5c' }}>
+                    <span
+                      onClick={() => navigate('/tasks', { state: { preset: { status }, presetLabel: `${status} – ${STATUS_LABEL[status] ?? status}` } })}
+                      title={`View ${STATUS_LABEL[status] ?? status} tasks`}
+                      style={{ fontSize: '0.88rem', fontWeight: 700, color: '#3a3f5c', cursor: 'pointer' }}
+                    >
                       {count} <span style={{ color: '#9e9fb4', fontWeight: 500 }}>({Math.round((count / total) * 100)}%)</span>
                     </span>
                   </div>
@@ -211,7 +215,9 @@ export default function Dashboard() {
                         <td>
                           <span
                             className="badge"
-                            style={{ background: '#4e73df22', color: 'var(--primary)', fontWeight: 700 }}
+                            onClick={() => navigate('/tasks', { state: { preset: { assignee_id: w.id, active: true }, presetLabel: `${w.name} · Active tasks` } })}
+                            title={`View ${w.name}'s active tasks`}
+                            style={{ background: '#4e73df22', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}
                           >
                             {w.active_tasks}
                           </span>

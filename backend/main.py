@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from database import engine, Base
 import models  # ensure all models are registered
@@ -7,6 +8,30 @@ import models  # ensure all models are registered
 from routers import members, tasks, labels, comments, attachments, portal, dashboard, config, todos, relations, releases, reports
 
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_schema():
+    """Lightweight, idempotent migrations for columns added after a table
+    already exists (create_all only creates missing tables, not columns)."""
+    insp = inspect(engine)
+    cols = {c["name"] for c in insp.get_columns("todo_threads")}
+    if "position" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE todo_threads ADD COLUMN position INTEGER NOT NULL DEFAULT 0"
+            ))
+            # Seed positions from the previous display order (newest first).
+            rows = conn.execute(text(
+                "SELECT id FROM todo_threads ORDER BY created_at DESC"
+            )).fetchall()
+            for pos, (thread_id,) in enumerate(rows):
+                conn.execute(
+                    text("UPDATE todo_threads SET position = :p WHERE id = :id"),
+                    {"p": pos, "id": thread_id},
+                )
+
+
+_ensure_schema()
 
 app = FastAPI(title="TeamMan API", version="1.0.0")
 
