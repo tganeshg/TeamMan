@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.12 (Phase 1 Complete)
+**Version:** 1.13 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -54,6 +54,7 @@ PrimeDesk is a **local web application** — the backend runs on `localhost` and
 | File I/O | aiofiles | 23.2.1 |
 | PDF Export | reportlab | 4.2.2 |
 | Word Export | python-docx | 1.1.2 |
+| Excel Export | openpyxl | 3.1.5 |
 | Frontend | React + TypeScript | 18 + 5.4 |
 | UI Library | Bootstrap 5 + React-Bootstrap | 5.3.3 |
 | Icons | Bootstrap Icons | 1.11.3 |
@@ -180,6 +181,7 @@ In addition to the cards, the two panels below them are click-through to the sam
   - **Assignee**, **Status**, **Progress**, **Release**: dropdown that saves immediately on change (setting Progress to 100% auto-closes the task).
   - All inline saves go through `quickUpdate()`, which re-sends the full task payload with the single changed field patched, then reloads.
 - **ID column**: portal task IDs render as a link to `{portalUrl}/view.php?id={id}` (opens in new tab) when portal credentials are configured.
+- **Excel export**: an Export menu in the page header offers "Current view (with filters)" and "All tasks (no filters)". Both download an `.xlsx` from `GET /tasks/export/xlsx` — the filtered option passes the current filter query params, the all option passes none. The endpoint and the list share one filter pipeline (`_query_tasks`), so the export always matches what the list would show. Columns: Priority, Portal ID, Title, Type, Assignee, Status, Progress %, Start Date, End Date, Release, Labels, Created.
 - Edit modal: all fields including Release dropdown, **Checklist** section, and Relations section
 - Detail offcanvas: meta, labels, description, **checklist**, comments, attachments; Portal ID also links out to Mantis
 - **Checklist** (per task): add / edit (type in place) / delete / toggle done / **drag-and-drop reorder** (grip handle, native HTML5). Edited in the task modal and **persisted when the task is saved**; the detail offcanvas shows the checklist in order with toggleable checkboxes (saved immediately). The task list shows a `done/total` progress badge for tasks that have a checklist. Completion status is preserved across edit/reorder.
@@ -358,6 +360,8 @@ Both exports generate the same document structure:
 ### Tasks (priority-relevant)
 | Method | Path | Action |
 |---|---|---|
+| GET | /tasks | List — accepts include/exclude/quick filter params |
+| GET | /tasks/export/xlsx | Download `.xlsx` of the (optionally filtered) task list |
 | POST | /tasks | Create — calls `_apply_priority` if assignee+priority given |
 | PUT | /tasks/{id} | Update — calls `_apply_priority` if priority changed |
 | DELETE | /tasks/{id} | Delete — compacts queue above deleted slot |
@@ -422,3 +426,5 @@ Both exports generate the same document structure:
 | Progress 100% auto-sets status to Closed (one-directional) | Matches the requirement; reopening (status → non-terminal) leaves progress editable below 100 rather than forcing it |
 | Exclude builder generalised to an Include/Exclude builder | Progress (and other fields) need multi-value include as well as exclude; one consistent chip-based control covers both |
 | `tasks.progress` added via idempotent startup migration | `create_all` can't add a column to the existing table; default 0 keeps existing tasks backward-compatible |
+| Excel export shares the list's `_query_tasks` filter pipeline | Guarantees the exported rows match the on-screen list for any filter combination; "no filters" simply passes no params |
+| Export generated server-side with openpyxl (like reports' PDF/Word) | Consistent with existing export approach; no new frontend dependency on the Node 16 / Vite 4 toolchain |

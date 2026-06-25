@@ -11,7 +11,7 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 | Feature | Description |
 |---|---|
 | **Dashboard** | Clickable stat cards (Total / Closed / Overdue / Due Today / Due This Week), task-by-status breakdown, and team workload view — all drill into a filtered task list (clicking a status count or a member's active-task count opens the matching tasks) |
-| **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, progress % (100% auto-closes), labels, comments, attachments |
+| **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, progress % (100% auto-closes), labels, comments, attachments; Excel (.xlsx) export with or without filters |
 | **Task Checklists** | Per-task checklist sub-items — add/edit/delete, toggle done, drag-and-drop reorder; managed in the task modal and persisted on save, shown in the detail panel and as a `done/total` badge in the list |
 | **Inline Editing** | Edit Priority, Assignee, Status, Progress, Release, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
 | **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
@@ -37,6 +37,7 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 | Icons | Bootstrap Icons |
 | PDF Export | reportlab 4.2.2 |
 | Word Export | python-docx 1.1.2 |
+| Excel Export | openpyxl 3.1.5 |
 
 ---
 
@@ -231,5 +232,6 @@ TeamMan/
 - Tasks: added a Progress (%) field (0–100 in steps of 10, default 0); 100% auto-closes the task and reopening allows lowering it again; shown as a Progress column in the list
 - Filter builder generalized to Include **and** Exclude (multi-value) and now covers Progress too
 - Todo: checklist items can be dragged between threads (cross-thread move), in addition to reordering
+- Tasks: export the list to Excel (.xlsx) — current view (with filters) or all tasks (openpyxl, server-side)
 
 > Authentication (login screen) is planned for Phase 2.

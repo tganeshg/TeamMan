@@ -57,6 +57,21 @@ export const getTasks = (filters?: TaskFilters) => {
 export const getTask = (id: number) =>
   api.get<TaskDetail>(`/tasks/${id}`).then(r => r.data)
 
+// Build a download URL for the xlsx export (filters optional → all tasks)
+export const taskExportXlsxUrl = (filters?: TaskFilters) => {
+  const params = new URLSearchParams()
+  if (filters) {
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        if (Array.isArray(v)) { if (v.length > 0) params.set(k, v.join(',')) }
+        else params.set(k, String(v))
+      }
+    })
+  }
+  const qs = params.toString()
+  return `/api/tasks/export/xlsx${qs ? `?${qs}` : ''}`
+}
+
 export interface ChecklistItemInput { id?: number; text: string; done: boolean }
 
 export const createTask = (data: {

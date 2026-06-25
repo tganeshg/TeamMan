@@ -141,38 +141,19 @@ def _apply_priority(db: Session, assignee_id: int, task_id: int, new_priority: i
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
-@router.get("", response_model=List[TaskOut])
-def list_tasks(
-    assignee_id: Optional[int] = Query(None),
-    status: Optional[str] = Query(None),
-    task_type: Optional[str] = Query(None),
-    label_ids: Optional[str] = Query(None),
-    start_date_from: Optional[date] = Query(None),
-    start_date_to: Optional[date] = Query(None),
-    end_date_from: Optional[date] = Query(None),
-    end_date_to: Optional[date] = Query(None),
-    release_id: Optional[int] = Query(None),
-    active: Optional[bool] = Query(None),
-    in_status: Optional[str] = Query(None),
-    in_assignee_id: Optional[str] = Query(None),
-    in_task_type: Optional[str] = Query(None),
-    in_label_ids: Optional[str] = Query(None),
-    in_release_id: Optional[str] = Query(None),
-    in_priority: Optional[str] = Query(None),
-    in_progress: Optional[str] = Query(None),
-    exclude_status: Optional[str] = Query(None),
-    exclude_assignee_id: Optional[str] = Query(None),
-    exclude_task_type: Optional[str] = Query(None),
-    exclude_label_ids: Optional[str] = Query(None),
-    exclude_release_id: Optional[str] = Query(None),
-    exclude_priority: Optional[str] = Query(None),
-    exclude_progress: Optional[str] = Query(None),
-    sort_by: str = Query("priority"),
-    sort_order: str = Query("asc"),
-    search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
-):
-    q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.checklist))
+def _query_tasks(
+    db: Session, *,
+    assignee_id=None, status=None, task_type=None, label_ids=None,
+    start_date_from=None, start_date_to=None, end_date_from=None, end_date_to=None,
+    release_id=None, active=None,
+    in_status=None, in_assignee_id=None, in_task_type=None, in_label_ids=None,
+    in_release_id=None, in_priority=None, in_progress=None,
+    exclude_status=None, exclude_assignee_id=None, exclude_task_type=None,
+    exclude_label_ids=None, exclude_release_id=None, exclude_priority=None, exclude_progress=None,
+    sort_by="priority", sort_order="asc", search=None,
+) -> List[Task]:
+    """Shared filter + sort pipeline for the task list and the xlsx export."""
+    q = db.query(Task).options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.checklist), joinedload(Task.release))
     if assignee_id is not None: q = q.filter(Task.assignee_id == assignee_id)
     if status:          q = q.filter(Task.status == status)
     if release_id is not None: q = q.filter(Task.release_id == release_id)
@@ -238,7 +219,156 @@ def list_tasks(
     }
     col = col_map.get(sort_by, Task.priority)
     q = q.order_by(col.asc() if sort_order == "asc" else col.desc())
-    return [enrich(t) for t in q.all()]
+    return q.all()
+
+
+@router.get("", response_model=List[TaskOut])
+def list_tasks(
+    assignee_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    task_type: Optional[str] = Query(None),
+    label_ids: Optional[str] = Query(None),
+    start_date_from: Optional[date] = Query(None),
+    start_date_to: Optional[date] = Query(None),
+    end_date_from: Optional[date] = Query(None),
+    end_date_to: Optional[date] = Query(None),
+    release_id: Optional[int] = Query(None),
+    active: Optional[bool] = Query(None),
+    in_status: Optional[str] = Query(None),
+    in_assignee_id: Optional[str] = Query(None),
+    in_task_type: Optional[str] = Query(None),
+    in_label_ids: Optional[str] = Query(None),
+    in_release_id: Optional[str] = Query(None),
+    in_priority: Optional[str] = Query(None),
+    in_progress: Optional[str] = Query(None),
+    exclude_status: Optional[str] = Query(None),
+    exclude_assignee_id: Optional[str] = Query(None),
+    exclude_task_type: Optional[str] = Query(None),
+    exclude_label_ids: Optional[str] = Query(None),
+    exclude_release_id: Optional[str] = Query(None),
+    exclude_priority: Optional[str] = Query(None),
+    exclude_progress: Optional[str] = Query(None),
+    sort_by: str = Query("priority"),
+    sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    tasks = _query_tasks(
+        db, assignee_id=assignee_id, status=status, task_type=task_type, label_ids=label_ids,
+        start_date_from=start_date_from, start_date_to=start_date_to,
+        end_date_from=end_date_from, end_date_to=end_date_to,
+        release_id=release_id, active=active,
+        in_status=in_status, in_assignee_id=in_assignee_id, in_task_type=in_task_type,
+        in_label_ids=in_label_ids, in_release_id=in_release_id, in_priority=in_priority, in_progress=in_progress,
+        exclude_status=exclude_status, exclude_assignee_id=exclude_assignee_id, exclude_task_type=exclude_task_type,
+        exclude_label_ids=exclude_label_ids, exclude_release_id=exclude_release_id,
+        exclude_priority=exclude_priority, exclude_progress=exclude_progress,
+        sort_by=sort_by, sort_order=sort_order, search=search,
+    )
+    return [enrich(t) for t in tasks]
+
+
+@router.get("/export/xlsx")
+def export_tasks_xlsx(
+    assignee_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    task_type: Optional[str] = Query(None),
+    label_ids: Optional[str] = Query(None),
+    start_date_from: Optional[date] = Query(None),
+    start_date_to: Optional[date] = Query(None),
+    end_date_from: Optional[date] = Query(None),
+    end_date_to: Optional[date] = Query(None),
+    release_id: Optional[int] = Query(None),
+    active: Optional[bool] = Query(None),
+    in_status: Optional[str] = Query(None),
+    in_assignee_id: Optional[str] = Query(None),
+    in_task_type: Optional[str] = Query(None),
+    in_label_ids: Optional[str] = Query(None),
+    in_release_id: Optional[str] = Query(None),
+    in_priority: Optional[str] = Query(None),
+    in_progress: Optional[str] = Query(None),
+    exclude_status: Optional[str] = Query(None),
+    exclude_assignee_id: Optional[str] = Query(None),
+    exclude_task_type: Optional[str] = Query(None),
+    exclude_label_ids: Optional[str] = Query(None),
+    exclude_release_id: Optional[str] = Query(None),
+    exclude_priority: Optional[str] = Query(None),
+    exclude_progress: Optional[str] = Query(None),
+    sort_by: str = Query("priority"),
+    sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    import io
+    from datetime import datetime
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    from fastapi.responses import StreamingResponse
+
+    tasks = _query_tasks(
+        db, assignee_id=assignee_id, status=status, task_type=task_type, label_ids=label_ids,
+        start_date_from=start_date_from, start_date_to=start_date_to,
+        end_date_from=end_date_from, end_date_to=end_date_to,
+        release_id=release_id, active=active,
+        in_status=in_status, in_assignee_id=in_assignee_id, in_task_type=in_task_type,
+        in_label_ids=in_label_ids, in_release_id=in_release_id, in_priority=in_priority, in_progress=in_progress,
+        exclude_status=exclude_status, exclude_assignee_id=exclude_assignee_id, exclude_task_type=exclude_task_type,
+        exclude_label_ids=exclude_label_ids, exclude_release_id=exclude_release_id,
+        exclude_priority=exclude_priority, exclude_progress=exclude_progress,
+        sort_by=sort_by, sort_order=sort_order, search=search,
+    )
+
+    status_labels = {
+        "SID00": "Not Started", "SID01": "Study", "SID02": "Requirement", "SID03": "POC",
+        "SID04": "Core Impl", "SID05": "Dev Testing", "SID06": "Review", "SID07": "Rework",
+        "SID08": "Ready to Merge", "SID09": "Ready to Release", "SID10": "Waiting",
+        "SID11": "Reopened", "SID12": "Closed", "SID13": "Released", "SID14": "On Hold",
+    }
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Tasks"
+    headers = ["Priority", "Portal ID", "Title", "Type", "Assignee", "Status",
+               "Progress %", "Start Date", "End Date", "Release", "Labels", "Created"]
+    ws.append(headers)
+    header_fill = PatternFill("solid", fgColor="4E73DF")
+    for c, _ in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=c)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical="center")
+
+    for t in tasks:
+        ws.append([
+            t.priority if t.priority is not None else "",
+            t.portal_task_id or "",
+            t.title,
+            "Bug" if t.task_type == "bug" else "Feature",
+            t.assignee.name if t.assignee else "Unassigned",
+            f"{t.status} – {status_labels.get(t.status, t.status)}",
+            t.progress,
+            t.start_date.isoformat() if t.start_date else "",
+            t.end_date.isoformat() if t.end_date else "",
+            t.release.name if t.release else "",
+            ", ".join(l.name for l in t.labels),
+            t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
+        ])
+
+    widths = [9, 10, 50, 9, 16, 22, 11, 12, 12, 14, 24, 17]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"tasks_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("", response_model=TaskOut, status_code=201)

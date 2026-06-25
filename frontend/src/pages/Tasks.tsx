@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import {
   Table, Button, Badge, Modal, Form, Row, Col,
-  Offcanvas, Spinner, Alert, InputGroup,
+  Offcanvas, Spinner, Alert, InputGroup, Dropdown,
 } from 'react-bootstrap'
 import dayjs from 'dayjs'
 import {
@@ -11,7 +11,7 @@ import {
   getMembers, getLabels, addComment, uploadAttachment,
   deleteAttachment, downloadUrl, fetchMantisIssue, assignTask,
   getRelations, addRelation, deleteRelation, getReleases,
-  getPortalStatus,
+  getPortalStatus, taskExportXlsxUrl,
 } from '../api/client'
 import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release, ChecklistItem } from '../types'
 
@@ -498,12 +498,35 @@ export default function Tasks() {
 
   const headerEl = document.getElementById('page-header-actions')
 
+  const downloadExport = (f?: TaskFilters) => {
+    const a = document.createElement('a')
+    a.href = taskExportXlsxUrl(f)
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
   return (
     <>
       {headerEl && createPortal(
-        <Button variant="primary" size="sm" onClick={openCreate}>
-          <i className="bi bi-plus-lg me-1" />New Task
-        </Button>,
+        <div className="d-flex gap-2">
+          <Dropdown>
+            <Dropdown.Toggle size="sm" variant="outline-success">
+              <i className="bi bi-file-earmark-excel me-1" />Export
+            </Dropdown.Toggle>
+            <Dropdown.Menu align="end">
+              <Dropdown.Item onClick={() => downloadExport(filters)}>
+                <i className="bi bi-funnel me-2" />Current view (with filters)
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => downloadExport(undefined)}>
+                <i className="bi bi-list-ul me-2" />All tasks (no filters)
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+          <Button variant="primary" size="sm" onClick={openCreate}>
+            <i className="bi bi-plus-lg me-1" />New Task
+          </Button>
+        </div>,
         headerEl
       )}
 

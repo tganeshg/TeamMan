@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.12 (Phase 1 Complete)
+**Version:** 1.13 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -141,6 +141,13 @@ Beyond the quick filters, a builder supports multi-value **Include** and **Exclu
 - Examples: show all tasks except "Not Started"; except those at 100% progress; only those at 0% or 50% progress; except a given user/release
 - Excluding an assignee / release / priority still shows tasks that have none of that field (NULL stays visible)
 - Existing quick-filter behavior is unchanged; filtering is performed in the database (no client-side scan)
+
+### Excel Export
+
+- An **Export** menu on the Task Management page exports the task list to an **Excel (.xlsx)** file
+- Two options: **Current view (with filters)** — respects all active include/exclude/quick filters and sort — and **All tasks (no filters)**
+- Columns: Priority, Portal ID, Title, Type, Assignee, Status, Progress %, Start Date, End Date, Release, Labels, Created
+- The export uses the same filtering as the on-screen list, so the rows always match what is shown
 
 - The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default `priority / ascending` view.
 
