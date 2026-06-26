@@ -12,13 +12,13 @@ PrimeDesk is a local web application built for the Prime Team project lead. It m
 |---|---|
 | **Dashboard** | Clickable stat cards (Total / Closed / Overdue / Due Today / Due This Week), task-by-status breakdown, and team workload view — all drill into a filtered task list (clicking a status count or a member's active-task count opens the matching tasks) |
 | **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, progress % (100% auto-closes), labels, comments, attachments; Excel (.xlsx) export with or without filters |
-| **Task Checklists** | Per-task checklist sub-items — add/edit/delete, toggle done, drag-and-drop reorder; managed in the task modal and persisted on save, shown in the detail panel and as a `done/total` badge in the list |
+| **Task Checklists** | Per-task checklist sub-items — add/edit/delete, toggle done, drag-and-drop reorder, bulk-import from a `.txt` file; managed in the task modal and persisted on save, shown in the detail panel and as a `done/total` badge in the list |
 | **Inline Editing** | Edit Priority, Assignee, Status, Progress, Release, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
 | **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |
 | **Team Management** | Add/edit/delete members with role hierarchy (Lead / Senior / Junior / Intern) |
-| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress; collapsible threads (collapsed by default, click heading to expand); inline edit for checklist items; drag-and-drop reordering of threads and checklist items, and moving checklist items between threads (auto-saved, persists across restart) |
+| **Todo Threads** | Meeting action items — heading, description, meeting reference, checklist items with progress; collapsible threads (collapsed by default, click heading to expand); inline edit for checklist items; bulk-import checklist items from a `.txt` file (one per line); drag-and-drop reordering of threads and checklist items, and moving checklist items between threads (auto-saved, persists across restart) |
 | **Release Management** | Create and manage releases with active/completed status; topbar badge shows active release countdown |
 | **Performance Reports** | Per-release team report: summary stats, per-member breakdown, task detail table; export as PDF or Word |
 | **Labels** | User-defined color labels, attachable to tasks, filterable |
@@ -232,6 +232,10 @@ TeamMan/
 - Tasks: added a Progress (%) field (0–100 in steps of 10, default 0); 100% auto-closes the task and reopening allows lowering it again; shown as a Progress column in the list
 - Filter builder generalized to Include **and** Exclude (multi-value) and now covers Progress too
 - Todo: checklist items can be dragged between threads (cross-thread move), in addition to reordering
+- Todo: bulk-import checklist items from a .txt file (one item per line) under a thread
+- Tasks: bulk-import checklist items from a .txt file in the task modal (saved with the task)
 - Tasks: export the list to Excel (.xlsx) — current view (with filters) or all tasks (openpyxl, server-side)
+- Tasks: the list hides done tasks (Closed + Released) by default (removable exclude-status chips; dashboard presets still show them)
+- Tasks: filter section shows a live count of listed tasks (reflects the active filter)
 
 > Authentication (login screen) is planned for Phase 2.

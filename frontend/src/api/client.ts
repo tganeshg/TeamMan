@@ -213,6 +213,9 @@ export const deleteTodoThread = (id: number) =>
 export const addTodoItem = (threadId: number, text: string) =>
   api.post<TodoItem>(`/todos/${threadId}/items`, { text }).then(r => r.data)
 
+export const bulkAddTodoItems = (threadId: number, items: string[]) =>
+  api.post<TodoItem[]>(`/todos/${threadId}/items/bulk`, { items }).then(r => r.data)
+
 export const updateTodoItem = (itemId: number, data: Partial<{ text: string; done: boolean; position: number; thread_id: number }>) =>
   api.put<TodoItem>(`/todo-items/${itemId}`, data).then(r => r.data)
 

@@ -79,6 +79,26 @@ def add_item(thread_id: int, data: schemas.TodoItemCreate, db: Session = Depends
     return item
 
 
+@router.post("/todos/{thread_id}/items/bulk", response_model=list[schemas.TodoItemOut])
+def add_items_bulk(thread_id: int, data: schemas.TodoItemsBulkCreate, db: Session = Depends(get_db)):
+    """Append many checklist items at once (e.g. each line of an uploaded text
+    file). Blank entries are skipped; new items go to the end in order."""
+    thread = db.get(models.TodoThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    texts = [t.strip() for t in data.items if t.strip()]
+    count = len(thread.items)
+    created = []
+    for i, text in enumerate(texts):
+        item = models.TodoItem(thread_id=thread_id, text=text, done=False, position=count + i)
+        db.add(item)
+        created.append(item)
+    db.commit()
+    for item in created:
+        db.refresh(item)
+    return created
+
+
 # Reorder must be declared BEFORE "/todo-items/{item_id}".
 @router.put("/todo-items/reorder")
 def reorder_items(data: schemas.ReorderRequest, db: Session = Depends(get_db)):

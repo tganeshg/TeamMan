@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import {
   getTodoThreads, createTodoThread, updateTodoThread, deleteTodoThread,
   addTodoItem, updateTodoItem, deleteTodoItem,
-  reorderTodoThreads, reorderTodoItems,
+  reorderTodoThreads, reorderTodoItems, bulkAddTodoItems,
 } from '../api/client'
 import type { TodoThread, TodoItem } from '../api/client'
 
@@ -88,6 +88,13 @@ export default function Todo() {
     if (!text) return
     await addTodoItem(threadId, text)
     setItemText(p => ({ ...p, [threadId]: '' }))
+    load()
+  }
+
+  // Bulk-add checklist items (e.g. each line of an uploaded .txt file)
+  const handleBulkAddItems = async (threadId: number, lines: string[]) => {
+    if (!lines.length) return
+    await bulkAddTodoItems(threadId, lines)
     load()
   }
 
@@ -215,7 +222,7 @@ export default function Todo() {
             Open — {open.length}
           </div>
           <Row className="g-3 mb-4">
-            {open.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
+            {open.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onBulkAddItems={handleBulkAddItems} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
           </Row>
         </>
       )}
@@ -227,7 +234,7 @@ export default function Todo() {
             Completed — {done.length}
           </div>
           <Row className="g-3">
-            {done.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
+            {done.map(t => <Col key={t.id} xs={12}><ThreadCard thread={t} onEdit={openEdit} onDelete={handleDeleteThread} onToggleStatus={toggleStatus} onAddItem={handleAddItem} onBulkAddItems={handleBulkAddItems} onToggleItem={handleToggleItem} onDeleteItem={handleDeleteItem} onEditItem={handleEditItem} itemText={itemText} setItemText={setItemText} dragThreadId={dragThreadId} overThreadId={overThreadId} setDragThreadId={setDragThreadId} setOverThreadId={setOverThreadId} onReorderThread={handleReorderThread} dragItem={dragItem} overItem={overItem} setDragItem={setDragItem} setOverItem={setOverItem} onItemDrop={handleItemDrop} /></Col>)}
           </Row>
         </>
       )}
@@ -287,6 +294,7 @@ interface CardProps {
   onDelete: (id: number) => void
   onToggleStatus: (t: TodoThread) => void
   onAddItem: (threadId: number) => void
+  onBulkAddItems: (threadId: number, lines: string[]) => void
   onToggleItem: (item: TodoItem) => void
   onDeleteItem: (itemId: number) => void
   onEditItem: (item: TodoItem, newText: string) => void
@@ -304,7 +312,18 @@ interface CardProps {
   onItemDrop: (toThreadId: number, targetItemId: number | null) => void
 }
 
-function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onToggleItem, onDeleteItem, onEditItem, itemText, setItemText, dragThreadId, overThreadId, setDragThreadId, setOverThreadId, onReorderThread, dragItem, overItem, setDragItem, setOverItem, onItemDrop }: CardProps) {
+function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onBulkAddItems, onToggleItem, onDeleteItem, onEditItem, itemText, setItemText, dragThreadId, overThreadId, setDragThreadId, setOverThreadId, onReorderThread, dragItem, overItem, setDragItem, setOverItem, onItemDrop }: CardProps) {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const lines = String(reader.result ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+      if (lines.length) onBulkAddItems(thread.id, lines)
+    }
+    reader.readAsText(file)
+    e.target.value = ''   // allow re-selecting the same file
+  }
   const isDone = thread.status === 'done'
   const doneCount = thread.items.filter(i => i.done).length
   const total = thread.items.length
@@ -506,20 +525,26 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onTog
           ))}
         </div>
 
-        {/* Add item input */}
+        {/* Add item input + bulk import from text file */}
         {!isDone && (
-          <div className="d-flex gap-2 mt-2">
-            <Form.Control
-              size="sm"
-              placeholder="Add action item..."
-              value={itemText[thread.id] ?? ''}
-              onChange={e => setItemText(p => ({ ...p, [thread.id]: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter') onAddItem(thread.id) }}
-            />
-            <Button size="sm" variant="outline-primary" onClick={() => onAddItem(thread.id)} style={{ flexShrink: 0 }}>
-              <i className="bi bi-plus" />
-            </Button>
-          </div>
+          <>
+            <div className="d-flex gap-2 mt-2">
+              <Form.Control
+                size="sm"
+                placeholder="Add action item..."
+                value={itemText[thread.id] ?? ''}
+                onChange={e => setItemText(p => ({ ...p, [thread.id]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') onAddItem(thread.id) }}
+              />
+              <Button size="sm" variant="outline-primary" onClick={() => onAddItem(thread.id)} style={{ flexShrink: 0 }}>
+                <i className="bi bi-plus" />
+              </Button>
+            </div>
+            <label className="btn btn-sm btn-link p-0 mt-1" style={{ fontSize: '0.75rem', textDecoration: 'none' }} title="Each non-empty line becomes a checklist item">
+              <i className="bi bi-upload me-1" />Import checklist from .txt file
+              <input type="file" accept=".txt,text/plain" hidden onChange={handleImportFile} />
+            </label>
+          </>
         )}
 
         <div style={{ fontSize: '0.72rem', color: '#c0c0c8', marginTop: 10, textAlign: 'right' }}>

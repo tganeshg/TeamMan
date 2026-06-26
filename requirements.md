@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.13 (Phase 1 Complete)
+**Version:** 1.17 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -149,7 +149,9 @@ Beyond the quick filters, a builder supports multi-value **Include** and **Exclu
 - Columns: Priority, Portal ID, Title, Type, Assignee, Status, Progress %, Start Date, End Date, Release, Labels, Created
 - The export uses the same filtering as the on-screen list, so the rows always match what is shown
 
-- The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default `priority / ascending` view.
+- The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default view.
+- **By default the Tasks list hides done tasks** — Closed (SID12) and Released (SID13) — via default `Exclude Status` chips. Remove the chips — or open a dashboard preset (e.g. the Closed / Total stat cards) — to include them.
+- A **count of listed tasks** is shown at the right of the filter-builder row and reflects the current filter result (e.g. "12 tasks listed").
 
 ## 7a. Inline Editing (Task List)
 
@@ -209,7 +211,7 @@ Editable directly in the task list table without opening the modal:
 ## 10a. Task Checklist
 
 - Each task can have an ordered list of checklist (sub-) items, each with text and a done flag
-- Managed in the **Edit / New Task** modal: add, edit (type in place), delete, toggle done, and **drag-and-drop reorder**
+- Managed in the **Edit / New Task** modal: add, edit (type in place), delete, toggle done, **drag-and-drop reorder**, and **import from a `.txt` file** (each non-empty line becomes an item, appended; saved with the task)
 - The checklist (including its order) is **persisted when the task is saved**; checklists can be added on a brand-new task too
 - The **task detail panel** displays the checklist in order with toggleable checkboxes (saved immediately)
 - The **task list** shows a `done/total` progress badge for tasks that have a checklist
@@ -266,6 +268,7 @@ Editable directly in the task list table without opening the modal:
 - Threads are listed vertically, one per row (full width)
 - **Collapsible:** threads are collapsed by default and show only the heading; clicking the heading expands/collapses the checklist. Each thread expands independently.
 - Checklist items support inline editing (pencil → edit; Enter/blur saves, Esc cancels)
+- **Bulk import from a text file:** under a thread, choose a `.txt` file and each non-empty line is added as a checklist item (whitespace trimmed, blank lines skipped, appended in order)
 - **Drag-and-drop reordering:**
   - Threads can be dragged (grip handle) to reorder the TODO list; the new order is saved automatically and persists across refresh/restart.
   - Checklist items can be dragged within a thread to reorder; the new order is saved automatically.

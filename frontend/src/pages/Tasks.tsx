@@ -110,7 +110,10 @@ export default function Tasks() {
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>(() => {
     const s = routeLocation.state as { preset?: TaskFilters } | null
-    return { sort_by: 'priority', sort_order: 'asc', ...(s?.preset ?? {}) }
+    // From a dashboard preset → use it as-is (may intentionally include done tasks)
+    if (s?.preset) return { sort_by: 'priority', sort_order: 'asc', ...s.preset }
+    // Default Tasks view hides done tasks — Closed (SID12) + Released (SID13); chips are removable
+    return { sort_by: 'priority', sort_order: 'asc', exclude_status: ['SID12', 'SID13'] }
   })
   const [presetLabel, setPresetLabel] = useState<string | null>(() => {
     const s = routeLocation.state as { presetLabel?: string } | null
@@ -153,6 +156,23 @@ export default function Tasks() {
     if (!t) return
     updateChecklist(cl => [...cl, { key: `tmp-${Date.now()}-${cl.length}`, text: t, done: false }])
     setClText('')
+  }
+  // Import checklist items from a .txt file — one non-empty line each (saved with the task)
+  const importChecklistFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const lines = String(reader.result ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+      if (lines.length) {
+        updateChecklist(cl => [
+          ...cl,
+          ...lines.map((text, i) => ({ key: `tmp-${Date.now()}-${cl.length + i}`, text, done: false })),
+        ])
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
   }
   const editChecklistText = (key: string, text: string) =>
     updateChecklist(cl => cl.map(i => (i.key === key ? { ...i, text } : i)))
@@ -541,7 +561,7 @@ export default function Tasks() {
           <button
             className="btn btn-sm ms-auto"
             style={{ padding: '2px 10px', fontSize: '0.8rem', color: 'var(--primary)', border: '1px solid var(--primary)', background: 'transparent', borderRadius: 6 }}
-            onClick={() => { setPresetLabel(null); setFilters({ sort_by: 'priority', sort_order: 'asc' }) }}
+            onClick={() => { setPresetLabel(null); setFilters({ sort_by: 'priority', sort_order: 'asc', exclude_status: ['SID12', 'SID13'] }) }}
           >
             <i className="bi bi-x me-1" />Clear filter
           </button>
@@ -621,6 +641,11 @@ export default function Tasks() {
               <Button size="sm" variant={fbMode === 'include' ? 'outline-primary' : 'outline-danger'} onClick={addFilter} disabled={!fbValue}>
                 <i className="bi bi-plus me-1" />Add
               </Button>
+            </Col>
+            <Col xs="auto" className="ms-auto">
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <i className="bi bi-list-task me-1" />{tasks.length} task{tasks.length !== 1 ? 's' : ''} listed
+              </span>
             </Col>
           </Row>
 
@@ -1219,9 +1244,15 @@ export default function Tasks() {
                   <i className="bi bi-plus" />
                 </Button>
               </div>
-              <Form.Text className="text-muted">
-                Drag <i className="bi bi-grip-vertical" /> to reorder. Saved with the task.
-              </Form.Text>
+              <div className="d-flex align-items-center justify-content-between mt-1">
+                <Form.Text className="text-muted mt-0">
+                  Drag <i className="bi bi-grip-vertical" /> to reorder. Saved with the task.
+                </Form.Text>
+                <label className="btn btn-sm btn-link p-0" style={{ fontSize: '0.75rem', textDecoration: 'none' }} title="Each non-empty line becomes a checklist item">
+                  <i className="bi bi-upload me-1" />Import from .txt file
+                  <input type="file" accept=".txt,text/plain" hidden onChange={importChecklistFile} />
+                </label>
+              </div>
             </Col>
 
             {/* ── Relations ── */}

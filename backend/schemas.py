@@ -301,6 +301,10 @@ class TodoItemCreate(BaseModel):
     position: int = 0
 
 
+class TodoItemsBulkCreate(BaseModel):
+    items: List[str]   # one checklist item per entry (e.g. lines from a text file)
+
+
 class TodoItemUpdate(BaseModel):
     text: Optional[str] = None
     done: Optional[bool] = None

@@ -2,7 +2,7 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.13 (Phase 1 Complete)
+**Version:** 1.17 (Phase 1 Complete)
 **Last Updated:** 2026-06-25
 
 ---
@@ -175,16 +175,18 @@ In addition to the cards, the two panels below them are click-through to the sam
 - **Progress (%)**: a fixed-increment select (0–100 by 10, default 0) in the task form. Setting **100% auto-closes the task** (status → SID12, `closed_at` set); reopening (status → non-terminal) clears `closed_at` and allows progress below 100 again. Saved with the task.
 - Filter bar + sortable table; **include** filters: Member, Status, Type, Label, **Release**, Due-date, plus sort field/direction (`release_id` filter is backed by the task-list endpoint). Filters are fully controlled — a dashboard preset or a cleared filter resets them to the `priority / asc` default.
 - **Include / Exclude filter builder**: a builder row (mode = Include/Exclude, field, value, Add) lets the user include **or** exclude values for Status, Assignee, Type, Labels, Release, Priority, and **Progress**. Active filters show as removable chips — green `= Field: Value` for include, red `≠ Field: Value` for exclude. Multiple values per field are supported, and they work together with the quick filters and each other (AND). Sent to the API as comma-separated arrays (`in_*` for include, `exclude_*` for exclude); the backend applies include as SQL `IN` / `EXISTS` and exclude as `NOT IN` / `NOT EXISTS`, keeping NULL assignee/release/priority rows visible on exclude.
-- **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets filters and dismisses the banner.
+- **Default view hides done tasks**: opening the Tasks page applies a default `exclude_status = [SID12, SID13]` so Closed and Released tasks are hidden. They appear as removable `≠ Status: …` chips — remove them (or use a dashboard preset / the "Closed" stat card) to see done tasks. Dashboard presets override the default (e.g. the Closed card and Total card both show done tasks).
+- **Preset filter banner**: when arriving from a dashboard stat card, a blue banner shows `Showing: <label>` with a **Clear filter** button that resets to the default view (Closed + Released hidden) and dismisses the banner.
 - **Inline editing in the list view** — click a cell to edit in place:
   - **Priority** (only when assigned), **Due Date**, **Labels** (checkbox popover), **Title** (feature tasks only): edit in a popover; **Enter** saves, **Escape** cancels, clicking outside auto-saves.
   - **Assignee**, **Status**, **Progress**, **Release**: dropdown that saves immediately on change (setting Progress to 100% auto-closes the task).
   - All inline saves go through `quickUpdate()`, which re-sends the full task payload with the single changed field patched, then reloads.
 - **ID column**: portal task IDs render as a link to `{portalUrl}/view.php?id={id}` (opens in new tab) when portal credentials are configured.
+- **Listed-count**: the right end of the filter-builder row shows `N tasks listed` (same line, no extra height), reflecting the current result count (updates with any include/exclude/quick filter).
 - **Excel export**: an Export menu in the page header offers "Current view (with filters)" and "All tasks (no filters)". Both download an `.xlsx` from `GET /tasks/export/xlsx` — the filtered option passes the current filter query params, the all option passes none. The endpoint and the list share one filter pipeline (`_query_tasks`), so the export always matches what the list would show. Columns: Priority, Portal ID, Title, Type, Assignee, Status, Progress %, Start Date, End Date, Release, Labels, Created.
 - Edit modal: all fields including Release dropdown, **Checklist** section, and Relations section
 - Detail offcanvas: meta, labels, description, **checklist**, comments, attachments; Portal ID also links out to Mantis
-- **Checklist** (per task): add / edit (type in place) / delete / toggle done / **drag-and-drop reorder** (grip handle, native HTML5). Edited in the task modal and **persisted when the task is saved**; the detail offcanvas shows the checklist in order with toggleable checkboxes (saved immediately). The task list shows a `done/total` progress badge for tasks that have a checklist. Completion status is preserved across edit/reorder.
+- **Checklist** (per task): add / edit (type in place) / delete / toggle done / **drag-and-drop reorder** (grip handle, native HTML5) / **import from a `.txt` file** (one item per non-empty line, appended in the modal). Edited in the task modal and **persisted when the task is saved**; the detail offcanvas shows the checklist in order with toggleable checkboxes (saved immediately). The task list shows a `done/total` progress badge for tasks that have a checklist. Completion status is preserved across edit/reorder.
 
 #### Reports
 - Left panel: release list with edit (✏) button per release
@@ -199,6 +201,7 @@ In addition to the cards, the two panels below them are click-through to the sam
 - Threads are stacked **vertically, full-width** (one per row) in each of the Open and Completed sections.
 - **Collapsible threads**: each thread is collapsed by default, showing only the heading (chevron ▶). Clicking the heading expands it (▼) to reveal description, progress, and checklist items; clicking again collapses. Expand state is per-thread and independent.
 - Checklist items support inline editing: click pencil icon → input field with current text; save on Enter/blur/✓, cancel on Escape/✗
+- **Import checklist from a `.txt` file**: an "Import checklist from .txt file" control under the add-item box reads the chosen file client-side, splits it on newlines, and bulk-creates one checklist item per non-empty (trimmed) line (`POST /todos/{id}/items/bulk`), appended to the end.
 - **Drag-and-drop reordering** (native HTML5 DnD, no extra deps):
   - Drag a thread card (grip handle ⋮⋮ in the header) onto another to reorder the thread list.
   - Drag a checklist item (grip handle) within a thread to reorder its items.
