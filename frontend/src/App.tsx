@@ -91,6 +91,15 @@ export default function App() {
   const navigate = useNavigate()
   const page = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   // Dark mode
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pd-theme') === 'dark')
@@ -186,17 +195,6 @@ export default function App() {
             {n.label}
           </NavLink>
         ))}
-
-        <div className="pd-nav-section" style={{ marginTop: 16 }}>Account</div>
-
-        <a href="#" className="pd-nav-link">
-          <span className="nav-icon"><i className="bi bi-person-circle" /></span>
-          Profile
-        </a>
-        <a href="#" className="pd-nav-link">
-          <span className="nav-icon"><i className="bi bi-shield-lock" /></span>
-          Security
-        </a>
 
         <div className="pd-sidebar-footer">
           <div className="pd-sidebar-user">
@@ -310,13 +308,52 @@ export default function App() {
 
             <div className="pd-topbar-divider" />
 
-            <div className="pd-user-pill">
-              <div className="pd-user-pill-avatar">PL</div>
-              <div>
-                <div className="pd-user-pill-name">Project Lead</div>
-                <div className="pd-user-pill-role">Admin</div>
+            <div ref={userMenuRef} style={{ position: 'relative' }}>
+              <div className="pd-user-pill" style={{ cursor: 'pointer' }}
+                onClick={() => setUserMenuOpen(o => !o)}>
+                <div className="pd-user-pill-avatar">PL</div>
+                <div>
+                  <div className="pd-user-pill-name">Project Lead</div>
+                  <div className="pd-user-pill-role">Admin</div>
+                </div>
+                <i className={`bi bi-chevron-${userMenuOpen ? 'up' : 'down'} ms-1`} style={{ fontSize: '0.75rem', color: '#9e9fb4' }} />
               </div>
-              <i className="bi bi-chevron-down ms-1" style={{ fontSize: '0.75rem', color: '#9e9fb4' }} />
+
+              {userMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: 'var(--bs-body-bg, #fff)',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  minWidth: 200, zIndex: 9999, overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '10px 14px 6px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>
+                    Account
+                  </div>
+                  {[
+                    { icon: 'bi-person-circle', label: 'Profile' },
+                    { icon: 'bi-shield-lock', label: 'Security' },
+                  ].map(item => (
+                    <a key={item.label} href="#" onClick={e => e.preventDefault()}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: '0.87rem', color: 'var(--text-dark)', textDecoration: 'none' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bs-body-bg, #f8f9fc)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className={`bi ${item.icon}`} style={{ color: 'var(--primary)', fontSize: '0.9rem' }} />
+                      {item.label}
+                    </a>
+                  ))}
+                  <div style={{ borderTop: '1px solid var(--card-border)', padding: '8px 14px 10px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 5 }}>About</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <i className="bi bi-kanban-fill" style={{ color: 'var(--primary)', fontSize: '0.85rem' }} />
+                      <span style={{ fontSize: '0.87rem', fontWeight: 600, color: 'var(--text-dark)' }}>PrimeDesk</span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Version 1.4 · Prime Team</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Local · SQLite · FastAPI</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
