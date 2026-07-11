@@ -1790,12 +1790,10 @@ export default function Tasks() {
                   </div>
                 ))}
 
-              {isLead && (
-                <label className="btn btn-sm btn-outline-secondary mt-1">
-                  <i className="bi bi-upload me-1" />Attach File
-                  <input type="file" multiple hidden onChange={handleUpload} />
-                </label>
-              )}
+              <label className="btn btn-sm btn-outline-secondary mt-1">
+                <i className="bi bi-upload me-1" />Attach File
+                <input type="file" multiple hidden onChange={handleUpload} />
+              </label>
             </>
           )}
         </Offcanvas.Body>
