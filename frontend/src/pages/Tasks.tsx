@@ -226,6 +226,21 @@ export default function Tasks() {
     load()
   }
 
+  const [detailClText, setDetailClText] = useState('')
+
+  const addDetailChecklistItem = async () => {
+    if (!selectedTask || !detailClText.trim()) return
+    const updated = [
+      ...selectedTask.checklist.map(c => ({ id: c.id, text: c.text, done: c.done })),
+      { text: detailClText.trim(), done: false },
+    ]
+    await updateTask(selectedTask.id, { checklist: updated })
+    setDetailClText('')
+    const d = await getTask(selectedTask.id)
+    setSelectedTask(d)
+    load()
+  }
+
   // ── Include / Exclude filter builder (multi-value) ─────────────────────────
   const [fbMode, setFbMode] = useState<'include' | 'exclude'>('include')
   const [fbBase, setFbBase] = useState<string>('status')
@@ -1701,14 +1716,15 @@ export default function Tasks() {
               )}
 
               {/* Checklist */}
-              {selectedTask.checklist.length > 0 && (
-                <div className="mb-3">
+              <div className="mb-3">
                   <div className="mb-1 d-flex align-items-center gap-2">
                     <i className="bi bi-check2-square text-primary" />
                     <span className="fw-semibold small">Checklist</span>
-                    <span className="text-muted small">
-                      ({selectedTask.checklist.filter(c => c.done).length}/{selectedTask.checklist.length})
-                    </span>
+                    {selectedTask.checklist.length > 0 && (
+                      <span className="text-muted small">
+                        ({selectedTask.checklist.filter(c => c.done).length}/{selectedTask.checklist.length})
+                      </span>
+                    )}
                   </div>
                   {selectedTask.checklist.map(item => (
                     <div key={item.id} className="d-flex align-items-center gap-2 py-1" style={{ borderBottom: '1px solid var(--card-border)' }}>
@@ -1723,8 +1739,20 @@ export default function Tasks() {
                       </span>
                     </div>
                   ))}
+                  <div className="d-flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      placeholder="Add checklist item..."
+                      value={detailClText}
+                      onChange={e => setDetailClText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDetailChecklistItem() } }}
+                    />
+                    <button className="btn btn-sm btn-outline-primary" onClick={addDetailChecklistItem} disabled={!detailClText.trim()}>
+                      <i className="bi bi-plus-lg" />
+                    </button>
+                  </div>
                 </div>
-              )}
 
               {/* Comments */}
               <div className="mb-1 d-flex align-items-center gap-2">
