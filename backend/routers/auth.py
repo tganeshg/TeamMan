@@ -13,6 +13,7 @@ from auth_utils import (
     create_access_token,
     get_current_user,
     require_lead,
+    LEAD_EMAIL,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -22,10 +23,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ---------------------------------------------------------------------------
 
 def _get_lead_email(db: Session) -> str:
-    row = db.query(AppConfig).filter(AppConfig.key == "lead_email").first()
-    if row and row.value:
-        return row.value
-    return os.environ.get("LEAD_EMAIL", "lead@teamman.local")
+    return LEAD_EMAIL
 
 
 def _get_lead_password_hash(db: Session) -> Optional[str]:
@@ -90,7 +88,7 @@ class LeadSetPasswordBody(BaseModel):
 def login(body: LoginBody, db: Session = Depends(get_db)):
     lead_email = _get_lead_email(db)
 
-    if body.email.lower() == lead_email.lower():
+    if body.email.lower() == LEAD_EMAIL.lower():
         # Lead login
         lead_hash = _get_lead_password_hash(db)
         if not lead_hash:
@@ -170,14 +168,23 @@ def me(user: dict = Depends(get_current_user)):
     }
 
 
-@router.put("/lead-email")
-def update_lead_email(
-    body: LeadEmailBody,
+class LeadNameBody(BaseModel):
+    name: str
+
+@router.put("/lead-name")
+def update_lead_name(
+    body: LeadNameBody,
     db: Session = Depends(get_db),
     user: dict = Depends(require_lead),
 ):
-    _set_config(db, "lead_email", body.email)
-    return {"ok": True}
+    """Update the lead's display name (stored in team_members row)."""
+    from models import TeamMember
+    member = db.query(TeamMember).filter(TeamMember.email == LEAD_EMAIL).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Lead member not found")
+    member.name = body.name.strip()
+    db.commit()
+    return {"ok": True, "name": member.name}
 
 
 @router.post("/lead-set-password")

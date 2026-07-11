@@ -283,3 +283,6 @@ export const leadSetPasswordApi = (new_password: string) =>
 
 export const leadInitPasswordApi = (new_password: string) =>
   api.post<{ ok: boolean }>('/auth/lead-init-password', { new_password }).then(r => r.data)
+
+export const changeLeadName = (name: string) =>
+  api.put<{ ok: boolean; name: string }>('/auth/lead-name', { name }).then(r => r.data)

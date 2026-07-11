@@ -6,6 +6,7 @@ from typing import List
 from database import get_db
 from models import TeamMember, Task
 from schemas import MemberCreate, MemberUpdate, MemberOut
+from auth_utils import LEAD_EMAIL
 
 router = APIRouter(prefix="/members", tags=["members"])
 
@@ -55,6 +56,8 @@ def update_member(member_id: int, payload: MemberUpdate, db: Session = Depends(g
 def delete_member(member_id: int, db: Session = Depends(get_db)):
     member = db.query(TeamMember).filter(TeamMember.id == member_id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found.")
+        raise HTTPException(status_code=404, detail="Member not found")
+    if member.email == LEAD_EMAIL:
+        raise HTTPException(status_code=403, detail="Cannot delete the lead account")
     db.delete(member)
     db.commit()

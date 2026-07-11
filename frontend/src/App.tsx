@@ -10,7 +10,7 @@ import Reports from './pages/Reports'
 import MyTaskBoard from './pages/MyTaskBoard'
 import Login from './pages/Login'
 import SetPassword from './pages/SetPassword'
-import { getReleases, getTasks } from './api/client'
+import { getReleases, getTasks, changeLeadName } from './api/client'
 import { useAuth } from './AuthContext'
 import type { Task } from './types'
 
@@ -93,7 +93,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function App() {
-  const { user, logout, loading } = useAuth()
+  const { user, setUser, logout, loading } = useAuth()
   const isLead = user?.role === 'lead'
   const location = useLocation()
   const navigate = useNavigate()
@@ -110,6 +110,8 @@ export default function App() {
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false)
@@ -374,19 +376,43 @@ export default function App() {
                   <div style={{ padding: '10px 14px 6px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>
                     Account
                   </div>
-                  {[
-                    { icon: 'bi-person-circle', label: 'Profile' },
-                    { icon: 'bi-shield-lock', label: 'Security' },
-                  ].map(item => (
-                    <a key={item.label} href="#" onClick={e => e.preventDefault()}
+                  {isLead && !editingName && (
+                    <a href="#" onClick={e => { e.preventDefault(); setNameInput(user?.name ?? ''); setEditingName(true) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: '0.87rem', color: 'var(--text-dark)', textDecoration: 'none' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--bs-body-bg, #f8f9fc)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <i className={`bi ${item.icon}`} style={{ color: 'var(--primary)', fontSize: '0.9rem' }} />
-                      {item.label}
+                      <i className="bi bi-pencil" style={{ color: 'var(--primary)', fontSize: '0.9rem' }} />
+                      Change Name
                     </a>
-                  ))}
+                  )}
+                  {isLead && editingName && (
+                    <div style={{ padding: '8px 14px' }}>
+                      <input
+                        className="form-control form-control-sm mb-1"
+                        value={nameInput}
+                        onChange={e => setNameInput(e.target.value)}
+                        onKeyDown={async e => {
+                          if (e.key === 'Enter' && nameInput.trim()) {
+                            await changeLeadName(nameInput.trim())
+                            setUser({ ...user!, name: nameInput.trim() })
+                            setEditingName(false)
+                          } else if (e.key === 'Escape') setEditingName(false)
+                        }}
+                        autoFocus
+                        placeholder="Your name"
+                      />
+                      <div className="d-flex gap-1">
+                        <button className="btn btn-sm btn-primary py-0 px-2" onClick={async () => {
+                          if (!nameInput.trim()) return
+                          await changeLeadName(nameInput.trim())
+                          setUser({ ...user!, name: nameInput.trim() })
+                          setEditingName(false)
+                        }}>Save</button>
+                        <button className="btn btn-sm btn-outline-secondary py-0 px-2" onClick={() => setEditingName(false)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                   <a href="#" onClick={e => { e.preventDefault(); logout(); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: '0.87rem', color: '#e74a3b', textDecoration: 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#e74a3b11')}

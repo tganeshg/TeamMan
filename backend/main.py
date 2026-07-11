@@ -45,6 +45,35 @@ def _ensure_schema():
             conn.execute(text("ALTER TABLE team_members ADD COLUMN password_hash TEXT"))
             conn.execute(text("ALTER TABLE team_members ADD COLUMN password_set INTEGER NOT NULL DEFAULT 0"))
 
+    # ── Seed lead member ──────────────────────────────────────────────────
+    # Ensure a TeamMember row for lead@teamman.local always exists.
+    # Also: one-time DB cleanup — wipe tasks, todos, non-lead members.
+    from models import TeamMember as TM, Task as T, TodoThread, TodoItem, AppConfig as AC
+    from auth_utils import LEAD_EMAIL
+    with engine.begin() as conn:
+        cleaned = conn.execute(text("SELECT value FROM app_config WHERE key='db_seeded_v2'")).fetchone()
+        if not cleaned:
+            # Wipe data tables
+            conn.execute(text("DELETE FROM task_relations"))
+            conn.execute(text("DELETE FROM task_labels"))
+            conn.execute(text("DELETE FROM task_checklist_items"))
+            conn.execute(text("DELETE FROM attachments"))
+            conn.execute(text("DELETE FROM comments"))
+            conn.execute(text("DELETE FROM tasks"))
+            conn.execute(text("DELETE FROM todo_items"))
+            conn.execute(text("DELETE FROM todo_threads"))
+            conn.execute(text("DELETE FROM releases"))
+            # Remove all members except lead
+            conn.execute(text(f"DELETE FROM team_members WHERE email != '{LEAD_EMAIL}'"))
+            # Ensure lead member exists
+            existing = conn.execute(text(f"SELECT id FROM team_members WHERE email='{LEAD_EMAIL}'")).fetchone()
+            if not existing:
+                conn.execute(text(
+                    f"INSERT INTO team_members (name, email, role, password_set) VALUES ('Project Lead', '{LEAD_EMAIL}', 'Lead', 1)"
+                ))
+            # Mark as done
+            conn.execute(text("INSERT OR REPLACE INTO app_config (key, value) VALUES ('db_seeded_v2', '1')"))
+
 
 _ensure_schema()
 
