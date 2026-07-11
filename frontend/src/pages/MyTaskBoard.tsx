@@ -151,14 +151,14 @@ export default function MyTaskBoard() {
           <Row className="g-3 mb-4">
             {statCards.map(card => (
               <Col key={card.label} xs={12} sm={4}>
-                <div className="arch-stat-card" style={{ borderLeft: `4px solid ${card.color}` }}>
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div>
-                      <div className="arch-stat-label">{card.label}</div>
-                      <div className="arch-stat-value" style={{ color: card.color }}>{card.value}</div>
-                    </div>
-                    <div className="arch-stat-icon" style={{ color: card.color, opacity: 0.3, fontSize: '2rem' }}>
-                      <i className={`bi ${card.icon}`} />
+                <div className="card h-100" style={{ borderLeft: `4px solid ${card.color}`, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+                  <div className="card-body py-4 px-4">
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 6 }}>{card.label}</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.value}</div>
+                      </div>
+                      <i className={`bi ${card.icon}`} style={{ color: card.color, opacity: 0.25, fontSize: '2.5rem' }} />
                     </div>
                   </div>
                 </div>
