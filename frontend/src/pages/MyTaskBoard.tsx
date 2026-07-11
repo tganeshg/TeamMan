@@ -23,7 +23,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const TERMINAL = new Set(['SID12', 'SID13'])
-const TODAY_FOCUS_STATUSES = new Set(['SID04', 'SID05', 'SID06'])
+const FOCUS_EXCLUDE_STATUSES = new Set(['SID06', 'SID12', 'SID13'])
 
 function StatusBadge({ status }: { status: string }) {
   const color = STATUS_COLOR[status] ?? '#858796'
@@ -115,15 +115,12 @@ export default function MyTaskBoard() {
     t => t.end_date && t.end_date < todayStr && !TERMINAL.has(t.status as string)
   )
 
-  const todayFocusTasks = tasks.filter(
+  const focusTasks = tasks.filter(
     t =>
-      t.end_date === todayStr ||
-      TODAY_FOCUS_STATUSES.has(t.status as string)
+      t.end_date != null &&
+      t.end_date >= todayStr &&
+      !FOCUS_EXCLUDE_STATUSES.has(t.status as string)
   )
-  // deduplicate
-  const focusMap = new Map<number, Task>()
-  todayFocusTasks.forEach(t => focusMap.set(t.id, t))
-  const focusTasks = Array.from(focusMap.values())
 
   const sortedTasks = [...tasks].sort((a, b) => {
     const aTerminal = TERMINAL.has(a.status as string) ? 1 : 0
