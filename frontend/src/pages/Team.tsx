@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Row, Col, Button, Modal, Form, Badge, Spinner } from 'react-bootstrap'
 import { getMembers, createMember, updateMember, deleteMember } from '../api/client'
+import { useAuth } from '../AuthContext'
 import type { Member } from '../types'
 
 const ROLE_COLORS: Record<string, string> = {
@@ -15,6 +16,8 @@ const ROLE_ICON: Record<string, string> = {
 }
 
 export default function Team() {
+  const { user } = useAuth()
+  const isLead = user?.role === 'lead'
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -84,7 +87,7 @@ export default function Team() {
 
   return (
     <>
-      {headerEl && createPortal(
+      {isLead && headerEl && createPortal(
         <Button variant="primary" size="sm" onClick={openAdd}>
           <i className="bi bi-person-plus me-1" />Add Member
         </Button>,
@@ -115,16 +118,18 @@ export default function Team() {
                   </span>
                 </div>
               </div>
-              <div className="card-footer bg-transparent border-top py-2 d-flex justify-content-end gap-2">
-                <Button variant="outline-secondary" size="sm" className="py-0" onClick={() => openEdit(m)}>
-                  <i className="bi bi-pencil" />
-                </Button>
-                {m.role !== 'Lead' && (
-                  <Button variant="outline-danger" size="sm" className="py-0" onClick={() => setDeleteId(m.id)}>
-                    <i className="bi bi-trash" />
+              {isLead && (
+                <div className="card-footer bg-transparent border-top py-2 d-flex justify-content-end gap-2">
+                  <Button variant="outline-secondary" size="sm" className="py-0" onClick={() => openEdit(m)}>
+                    <i className="bi bi-pencil" />
                   </Button>
-                )}
-              </div>
+                  {m.role !== 'Lead' && (
+                    <Button variant="outline-danger" size="sm" className="py-0" onClick={() => setDeleteId(m.id)}>
+                      <i className="bi bi-trash" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </Col>
         ))}
