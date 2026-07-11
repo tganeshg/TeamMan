@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../AuthContext'
 import {
   Table, Button, Badge, Modal, Form, Row, Col,
   Offcanvas, Spinner, Alert, InputGroup, Dropdown,
@@ -106,6 +107,8 @@ function PriorityDot({ p }: { p: number | null }) {
 }
 
 export default function Tasks() {
+  const { user } = useAuth()
+  const isLead = user?.role === 'lead'
   const routeLocation = useLocation()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -325,6 +328,7 @@ export default function Tasks() {
   }
 
   const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release', currentValue: any) => {
+    if (!isLead) return
     inlineEditRef.current = { taskId, field }
     inlineValueRef.current = currentValue
     setInlineEdit({ taskId, field })
@@ -535,7 +539,7 @@ export default function Tasks() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.target as HTMLElement).isContentEditable) return
       if (showModal || showDetail) return
-      if (e.key === 'n' || e.key === 'N') openCreate()
+      if ((e.key === 'n' || e.key === 'N') && isLead) openCreate()
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
@@ -592,9 +596,11 @@ export default function Tasks() {
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
-          <Button variant="primary" size="sm" onClick={openCreate}>
-            <i className="bi bi-plus-lg me-1" />New Task
-          </Button>
+          {isLead && (
+            <Button variant="primary" size="sm" onClick={openCreate}>
+              <i className="bi bi-plus-lg me-1" />New Task
+            </Button>
+          )}
         </div>,
         headerEl
       )}
@@ -667,7 +673,7 @@ export default function Tasks() {
       })()}
 
       {/* Feature 6: Bulk action bar */}
-      {selectedIds.size > 0 && (
+      {isLead && selectedIds.size > 0 && (
         <div className="bulk-action-bar">
           <span className="bulk-count"><i className="bi bi-check2-square me-1" />{selectedIds.size} selected</span>
           <Form.Select size="sm" style={{ width: 160 }} value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
@@ -796,17 +802,19 @@ export default function Tasks() {
             <Table className="pd-table mb-0" hover responsive>
               <thead>
                 <tr>
-                  <th style={{ width: 36 }} className="ps-2" onClick={e => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                      checked={tasks.length > 0 && tasks.every(t => selectedIds.has(t.id))}
-                      onChange={e => {
-                        if (e.target.checked) setSelectedIds(new Set(tasks.map(t => t.id)))
-                        else setSelectedIds(new Set())
-                      }}
-                    />
-                  </th>
+                  {isLead && (
+                    <th style={{ width: 36 }} className="ps-2" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                        checked={tasks.length > 0 && tasks.every(t => selectedIds.has(t.id))}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedIds(new Set(tasks.map(t => t.id)))
+                          else setSelectedIds(new Set())
+                        }}
+                      />
+                    </th>
+                  )}
                   <th className="ps-2" style={{ width: 50 }}>P#</th>
                   <th style={{ width: 80 }}>ID</th>
                   <th>Title</th>
@@ -828,19 +836,21 @@ export default function Tasks() {
                     onClick={() => openDetail(task)}
                   >
                     {/* Checkbox — feature 6 */}
-                    <td className="ps-2" style={{ width: 36 }} onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                        checked={selectedIds.has(task.id)}
-                        onChange={e => {
-                          const next = new Set(selectedIds)
-                          if (e.target.checked) next.add(task.id)
-                          else next.delete(task.id)
-                          setSelectedIds(next)
-                        }}
-                      />
-                    </td>
+                    {isLead && (
+                      <td className="ps-2" style={{ width: 36 }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                          checked={selectedIds.has(task.id)}
+                          onChange={e => {
+                            const next = new Set(selectedIds)
+                            if (e.target.checked) next.add(task.id)
+                            else next.delete(task.id)
+                            setSelectedIds(next)
+                          }}
+                        />
+                      </td>
+                    )}
                     {/* Priority — inline editable */}
                     <td className="ps-2" style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); if (task.assignee) openInline(task.id, 'priority', task.priority ?? 1) }}
@@ -1180,16 +1190,20 @@ export default function Tasks() {
                     </td>
 
                     <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                      <Button variant="outline-secondary" size="sm" className="me-1"
-                        style={{ padding: '1px 6px', lineHeight: 1 }}
-                        onClick={() => openEdit(task)}>
-                        <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }} />
-                      </Button>
-                      <Button variant="outline-danger" size="sm"
-                        style={{ padding: '1px 6px', lineHeight: 1 }}
-                        onClick={() => setDeleteConfirmId(task.id)}>
-                        <i className="bi bi-trash" style={{ fontSize: '0.75rem' }} />
-                      </Button>
+                      {isLead && (
+                        <>
+                          <Button variant="outline-secondary" size="sm" className="me-1"
+                            style={{ padding: '1px 6px', lineHeight: 1 }}
+                            onClick={() => openEdit(task)}>
+                            <i className="bi bi-pencil" style={{ fontSize: '0.75rem' }} />
+                          </Button>
+                          <Button variant="outline-danger" size="sm"
+                            style={{ padding: '1px 6px', lineHeight: 1 }}
+                            onClick={() => setDeleteConfirmId(task.id)}>
+                            <i className="bi bi-trash" style={{ fontSize: '0.75rem' }} />
+                          </Button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1587,14 +1601,16 @@ export default function Tasks() {
           {selectedTask && !detailLoading && (
             <>
               {/* Action buttons */}
-              <div className="d-flex gap-2 mb-3">
-                <Button variant="outline-primary" size="sm" onClick={() => { setShowDetail(false); openEdit(selectedTask) }}>
-                  <i className="bi bi-pencil me-1" />Edit
-                </Button>
-                <Button variant="outline-danger" size="sm" onClick={() => setDeleteConfirmId(selectedTask.id)}>
-                  <i className="bi bi-trash me-1" />Delete
-                </Button>
-              </div>
+              {isLead && (
+                <div className="d-flex gap-2 mb-3">
+                  <Button variant="outline-primary" size="sm" onClick={() => { setShowDetail(false); openEdit(selectedTask) }}>
+                    <i className="bi bi-pencil me-1" />Edit
+                  </Button>
+                  <Button variant="outline-danger" size="sm" onClick={() => setDeleteConfirmId(selectedTask.id)}>
+                    <i className="bi bi-trash me-1" />Delete
+                  </Button>
+                </div>
+              )}
 
               {/* Meta */}
               <div className="card border-0 bg-light rounded-3 p-3 mb-3">
@@ -1759,18 +1775,22 @@ export default function Tasks() {
                       <a href={downloadUrl(att.id)} download={att.filename} className="btn btn-sm btn-outline-secondary py-0">
                         <i className="bi bi-download" />
                       </a>
-                      <Button variant="outline-danger" size="sm" className="py-0"
-                        onClick={() => handleDeleteAttachment(att.id)}>
-                        <i className="bi bi-x" />
-                      </Button>
+                      {isLead && (
+                        <Button variant="outline-danger" size="sm" className="py-0"
+                          onClick={() => handleDeleteAttachment(att.id)}>
+                          <i className="bi bi-x" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
 
-              <label className="btn btn-sm btn-outline-secondary mt-1">
-                <i className="bi bi-upload me-1" />Attach File
-                <input type="file" multiple hidden onChange={handleUpload} />
-              </label>
+              {isLead && (
+                <label className="btn btn-sm btn-outline-secondary mt-1">
+                  <i className="bi bi-upload me-1" />Attach File
+                  <input type="file" multiple hidden onChange={handleUpload} />
+                </label>
+              )}
             </>
           )}
         </Offcanvas.Body>

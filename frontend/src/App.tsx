@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
@@ -7,6 +7,7 @@ import Team from './pages/Team'
 import Todo from './pages/Todo'
 import Settings from './pages/Settings'
 import Reports from './pages/Reports'
+import MyTaskBoard from './pages/MyTaskBoard'
 import Login from './pages/Login'
 import SetPassword from './pages/SetPassword'
 import { getReleases, getTasks } from './api/client'
@@ -15,6 +16,7 @@ import type { Task } from './types'
 
 const navItems = [
   { to: '/', icon: 'bi-speedometer2', label: 'Dashboard' },
+  { to: '/my-tasks', icon: 'bi-person-check-fill', label: 'My Tasks' },
   { to: '/tasks', icon: 'bi-check2-square', label: 'Tasks' },
   { to: '/team', icon: 'bi-people-fill', label: 'Team' },
   { to: '/todo', icon: 'bi-card-checklist', label: 'Todo' },
@@ -24,6 +26,7 @@ const navItems = [
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/': { title: 'Dashboard', sub: '' },
+  '/my-tasks': { title: 'My Task Board', sub: '' },
   '/tasks': { title: 'Task Management', sub: 'Manage and track your team tasks' },
   '/team': { title: 'Team Members', sub: 'Manage your Prime Team' },
   '/todo': { title: 'Todo', sub: 'Threads, action items and meeting notes' },
@@ -91,13 +94,19 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function App() {
   const { user, logout, loading } = useAuth()
+  const isLead = user?.role === 'lead'
   const location = useLocation()
   const navigate = useNavigate()
   const pageRaw = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
   const page = {
     title: pageRaw.title,
-    sub: location.pathname === '/' && user ? `Welcome back, ${user.name} 👋` : pageRaw.sub,
+    sub: location.pathname === '/' && user ? `Welcome back, ${user.name} 👋`
+      : location.pathname === '/my-tasks' && user ? `Your assigned tasks, ${user.name}`
+      : pageRaw.sub,
   }
+  const visibleNavItems = isLead
+    ? navItems.filter(n => n.to !== '/my-tasks')
+    : navItems.filter(n => n.to !== '/')
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -211,7 +220,7 @@ export default function App() {
 
         <div className="pd-nav-section">Main</div>
 
-        {navItems.map(n => (
+        {visibleNavItems.map(n => (
           <NavLink
             key={n.to}
             to={n.to}
@@ -413,7 +422,8 @@ export default function App() {
           <hr style={{ borderColor: 'var(--card-border)', marginBottom: 24, marginTop: 0 }} />
 
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={isLead ? <Dashboard /> : <Navigate to="/my-tasks" replace />} />
+            <Route path="/my-tasks" element={<MyTaskBoard />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/team" element={<Team />} />
             <Route path="/todo" element={<Todo />} />
