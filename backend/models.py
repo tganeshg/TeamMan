@@ -16,6 +16,9 @@ class TeamMember(Base):
     role = Column(String, nullable=False)  # Lead, Senior, Junior, Intern
     created_at = Column(DateTime, default=func.now())
 
+    password_hash = Column(String, nullable=True)       # None = password not yet set
+    password_set  = Column(Boolean, nullable=False, default=False)
+
     tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assignee_id")
 
 
