@@ -1751,6 +1751,24 @@ export default function Tasks() {
                     <button className="btn btn-sm btn-outline-primary" onClick={addDetailChecklistItem} disabled={!detailClText.trim()}>
                       <i className="bi bi-plus-lg" />
                     </button>
+                    <label className="btn btn-sm btn-outline-secondary" title="Import items from .txt file (one per line)">
+                      <i className="bi bi-file-earmark-text" />
+                      <input type="file" accept=".txt" hidden onChange={async e => {
+                        if (!selectedTask) return
+                        const file = e.target.files?.[0]; if (!file) return
+                        const text = await file.text()
+                        const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+                        if (!lines.length) return
+                        const updated = [
+                          ...selectedTask.checklist.map(c => ({ id: c.id, text: c.text, done: c.done })),
+                          ...lines.map(l => ({ text: l, done: false })),
+                        ]
+                        await updateTask(selectedTask.id, { checklist: updated })
+                        const d = await getTask(selectedTask.id)
+                        setSelectedTask(d); load()
+                        e.target.value = ''
+                      }} />
+                    </label>
                   </div>
                 </div>
 
