@@ -156,6 +156,8 @@ class TodoThread(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+    member_id = Column(Integer, ForeignKey("team_members.id", ondelete="CASCADE"), nullable=True)
+
     items = relationship("TodoItem", back_populates="thread", cascade="all, delete-orphan", order_by="TodoItem.position")
 
 

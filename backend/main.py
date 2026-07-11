@@ -32,6 +32,11 @@ def _ensure_schema():
                     {"p": pos, "id": thread_id},
                 )
 
+    todo_cols = {c["name"] for c in insp.get_columns("todo_threads")}
+    if "member_id" not in todo_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE todo_threads ADD COLUMN member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE"))
+
     task_cols = {c["name"] for c in insp.get_columns("tasks")}
     if "progress" not in task_cols:
         with engine.begin() as conn:
