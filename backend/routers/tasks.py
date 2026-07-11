@@ -29,7 +29,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 _TERMINAL = {"SID12", "SID13"}   # Closed, Released
 _PROBLEM  = {"SID07", "SID11"}   # Rework, Reopened
-_WAITING  = {"SID10", "SID14"}   # Waiting, On Hold
+_WAITING  = {"SID10", "SID14", "SID15", "SID16"}   # Waiting, On Hold, Debug, Moved to Software
 _READY    = {"SID08", "SID09"}   # Ready to Merge / Release
 
 
@@ -324,6 +324,7 @@ def export_tasks_xlsx(
         "SID04": "Core Impl", "SID05": "Dev Testing", "SID06": "Review", "SID07": "Rework",
         "SID08": "Ready to Merge", "SID09": "Ready to Release", "SID10": "Waiting",
         "SID11": "Reopened", "SID12": "Closed", "SID13": "Released", "SID14": "On Hold",
+        "SID15": "Debug", "SID16": "Moved to Software",
     }
 
     wb = Workbook()
@@ -381,6 +382,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
         task_data["status"] = "SID12"   # 100% auto-closes the task
     if task_data.get("status") in _TERMINAL:
         task_data.setdefault("closed_at", date.today())
+        task_data.setdefault("progress", 100)  # closing → auto set progress to 100%
 
     task = Task(**task_data)
     if label_ids:
@@ -408,6 +410,52 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(task)
     return enrich(task)
+
+
+@router.post("/bulk-update")
+def bulk_update(payload: dict, db: Session = Depends(get_db)):
+    """Bulk-update a list of tasks with a common patch dict.
+    payload: { task_ids: [1, 2, 3], patch: { status: "SID12" } }
+    """
+    task_ids = payload.get("task_ids", [])
+    patch = payload.get("patch", {})
+    if not task_ids or not patch:
+        return {"updated": 0}
+
+    updated = 0
+    for task_id in task_ids:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            continue
+        new_status = patch.get("status")
+        if new_status:
+            closing = new_status in _TERMINAL and task.status not in _TERMINAL
+            reopening = new_status not in _TERMINAL and task.status in _TERMINAL
+            if closing:
+                task.closed_at = date.today()
+                task.progress = 100
+                if task.assignee_id and task.priority is not None:
+                    others = db.query(Task).filter(
+                        Task.assignee_id == task.assignee_id,
+                        Task.priority > task.priority,
+                        Task.id != task.id,
+                    ).all()
+                    for t in others:
+                        t.priority -= 1
+                    db.flush()
+                task.priority = None
+            elif reopening:
+                task.closed_at = None
+        for field, value in patch.items():
+            if field == "assignee_id":
+                setattr(task, field, int(value) if value else None)
+            elif field != "status" or not patch.get("status"):
+                setattr(task, field, value)
+            else:
+                setattr(task, field, value)
+        updated += 1
+    db.commit()
+    return {"updated": updated}
 
 
 @router.get("/{task_id}", response_model=TaskDetail)
@@ -439,15 +487,41 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     new_priority = data.pop("priority", None)
     new_assignee = data.get("assignee_id", task.assignee_id)
 
-    # Apply all non-priority field changes first
+    # ── Status-driven side effects ────────────────────────────────────────────
     if data.get("progress") == 100:
-        data["status"] = "SID12"   # 100% auto-closes the task
+        data["status"] = "SID12"   # 100% → auto-close
+
     new_status = data.get("status")
-    if new_status:
-        if new_status in _TERMINAL and task.status not in _TERMINAL:
-            data["closed_at"] = date.today()
-        elif new_status not in _TERMINAL and task.status in _TERMINAL:
-            data["closed_at"] = None
+    closing = new_status and new_status in _TERMINAL and task.status not in _TERMINAL
+    reopening = new_status and new_status not in _TERMINAL and task.status in _TERMINAL
+
+    if closing:
+        data["closed_at"] = date.today()
+        data["progress"] = 100
+        # Free priority slot and compact the assignee's queue
+        if task.assignee_id and task.priority is not None:
+            others = db.query(Task).filter(
+                Task.assignee_id == task.assignee_id,
+                Task.priority > task.priority,
+                Task.id != task.id,
+            ).all()
+            for t in others:
+                t.priority -= 1
+            db.flush()
+        task.priority = None   # set directly on ORM object; skip priority block below
+        new_priority = None    # prevent priority block from re-assigning
+
+    elif reopening:
+        data["closed_at"] = None
+        # Place re-opened task at the end of the assignee's active queue
+        if task.assignee_id and new_priority is None:
+            count = db.query(Task).filter(
+                Task.assignee_id == task.assignee_id,
+                Task.priority.isnot(None),
+                Task.id != task.id,
+            ).count()
+            task.priority = count + 1
+            new_priority = None  # already set above; skip priority block
 
     for field, value in data.items():
         setattr(task, field, value)
@@ -455,16 +529,11 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     if label_ids is not None:
         task.labels = db.query(Label).filter(Label.id.in_(label_ids)).all()
 
-    # Now handle priority change
+    # Now handle explicit priority change (skipped when closing/re-opening handled above)
     if new_priority is not None:
-        effective_assignee = new_assignee  # may have just been updated above
+        effective_assignee = new_assignee
 
         if effective_assignee:
-            if effective_assignee != task.assignee_id:
-                # Reassigned to different member — remove from old queue first
-                # (old queue compact: handled by _apply_priority excluding this task)
-                pass  # _apply_priority already excludes task_id from query
-
             _apply_priority(db, effective_assignee, task.id, new_priority)
             # _apply_priority already set task.priority directly
         else:

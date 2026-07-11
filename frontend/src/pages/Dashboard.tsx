@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Row, Col, Table, Badge, Spinner } from 'react-bootstrap'
-import { getDashboard } from '../api/client'
+import { getDashboard, getDashboardActivity } from '../api/client'
+import type { ActivityItem } from '../api/client'
 import type { DashboardData, TaskFilters } from '../types'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -10,7 +11,7 @@ const STATUS_LABEL: Record<string, string> = {
   SID04: 'Core Impl',  SID05: 'Dev Testing',       SID06: 'Review',
   SID07: 'Rework',     SID08: 'Ready to Merge',    SID09: 'Ready to Release',
   SID10: 'Waiting',    SID11: 'Reopened',           SID12: 'Closed',
-  SID13: 'Released',   SID14: 'On Hold',
+  SID13: 'Released',   SID14: 'On Hold',   SID15: 'Debug',   SID16: 'Moved to Software',
 }
 
 const STATUS_BG: Record<string, string> = {
@@ -19,7 +20,7 @@ const STATUS_BG: Record<string, string> = {
   SID04: '#4e73df', SID05: '#36b9cc', SID06: '#f6c23e',
   SID07: '#e74a3b', SID08: '#1cc88a', SID09: '#1cc88a',
   SID10: '#f6c23e', SID11: '#e74a3b', SID12: '#858796',
-  SID13: '#1cc88a', SID14: '#f6c23e',
+  SID13: '#1cc88a', SID14: '#f6c23e', SID15: '#4e73df', SID16: '#f6c23e',
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -28,7 +29,7 @@ const STATUS_BADGE: Record<string, string> = {
   SID04: 'primary',   SID05: 'info',       SID06: 'warning',
   SID07: 'danger',    SID08: 'success',    SID09: 'success',
   SID10: 'warning',   SID11: 'danger',     SID12: 'secondary',
-  SID13: 'success',   SID14: 'warning',
+  SID13: 'success',   SID14: 'warning',    SID15: 'primary',  SID16: 'warning',
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -47,13 +48,26 @@ const STAT_CARDS: { key: string; label: string; icon: string; color: string; bg:
   { key: 'due_week',  label: 'Due This Week', icon: 'bi-calendar-week-fill',        color: '#fff', bg: '#2FA4E7', filter: { end_date_from: today, end_date_to: nextWeek }, filterLabel: 'Due This Week'   },
 ]
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activity, setActivity] = useState<ActivityItem[]>([])
 
   useEffect(() => {
     getDashboard().then(setData).finally(() => setLoading(false))
+    getDashboardActivity().then(setActivity).catch(() => {})
   }, [])
 
   if (loading) return (
@@ -191,7 +205,11 @@ export default function Dashboard() {
                     const loadColor = pct > 70 ? '#e74a3b' : pct > 40 ? '#f6c23e' : '#1cc88a'
                     const loadLabel = pct > 70 ? 'High' : pct > 40 ? 'Medium' : 'Low'
                     return (
-                      <tr key={w.id}>
+                      <tr key={w.id}
+                        className="arch-stat-card--clickable"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate('/tasks', { state: { preset: { assignee_id: w.id }, presetLabel: `${w.name}'s Tasks` } })}
+                      >
                         <td className="ps-4">
                           <div className="d-flex align-items-center gap-2">
                             <div
@@ -255,6 +273,52 @@ export default function Dashboard() {
           </div>
         </Col>
       </Row>
+
+      {/* Activity Feed */}
+      {activity.length > 0 && (
+        <Row className="g-3 mt-0">
+          <Col xs={12}>
+            <div className="card pd-card">
+              <div className="card-header">
+                <span>
+                  <i className="bi bi-activity me-2" style={{ color: 'var(--primary)' }} />
+                  Recent Activity
+                </span>
+                <span className="badge" style={{ background: 'var(--primary)', color: '#fff' }}>
+                  Last 10 updates
+                </span>
+              </div>
+              <div className="card-body py-2">
+                <ul className="activity-feed">
+                  {activity.map(item => (
+                    <li key={item.id} className="activity-item">
+                      <span
+                        className="activity-dot"
+                        style={{ background: STATUS_BG[item.status] ?? '#adb5bd' }}
+                      />
+                      <div className="activity-text">
+                        <div className="activity-title"
+                          style={{ cursor: 'pointer', color: 'var(--primary)' }}
+                          onClick={() => navigate('/tasks', { state: { openTaskId: item.id } })}
+                        >
+                          {item.title}
+                        </div>
+                        <div className="activity-meta">
+                          <span style={{ color: STATUS_BG[item.status] ?? '#adb5bd', fontWeight: 700 }}>
+                            {STATUS_LABEL[item.status] ?? item.status}
+                          </span>
+                          {item.assignee && <> · {item.assignee}</>}
+                          {item.updated_at && <> · {timeAgo(item.updated_at)}</>}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      )}
     </>
   )
 }

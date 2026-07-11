@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import date, timedelta
 
@@ -55,3 +55,24 @@ def get_dashboard(db: Session = Depends(get_db)):
         "closed": closed,
         "workload": workload,
     }
+
+
+@router.get("/activity")
+def get_activity(db: Session = Depends(get_db)):
+    tasks = (
+        db.query(Task)
+        .options(joinedload(Task.assignee))
+        .order_by(Task.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+    return [
+        {
+            "id": t.id,
+            "title": t.title,
+            "status": t.status,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+            "assignee": t.assignee.name if t.assignee else None,
+        }
+        for t in tasks
+    ]

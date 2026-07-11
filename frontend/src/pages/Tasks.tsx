@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Table, Button, Badge, Modal, Form, Row, Col,
   Offcanvas, Spinner, Alert, InputGroup, Dropdown,
@@ -11,7 +11,7 @@ import {
   getMembers, getLabels, addComment, uploadAttachment,
   deleteAttachment, downloadUrl, fetchMantisIssue, assignTask,
   getRelations, addRelation, deleteRelation, getReleases,
-  getPortalStatus, taskExportXlsxUrl,
+  getPortalStatus, taskExportXlsxUrl, bulkUpdateTasks,
 } from '../api/client'
 import type { Task, TaskDetail, Member, Label, TaskFilters, TaskRelation, RelationType, Release, ChecklistItem } from '../types'
 
@@ -37,6 +37,8 @@ const STATUS_LABEL: Record<string, string> = {
   SID12: 'Closed',
   SID13: 'Released',
   SID14: 'On Hold',
+  SID15: 'Debug',
+  SID16: 'Moved to Software',
 }
 const STATUS_COLOR_HEX: Record<string, string> = {
   SID00: '#858796',
@@ -54,6 +56,8 @@ const STATUS_COLOR_HEX: Record<string, string> = {
   SID12: '#858796',
   SID13: '#1cc88a',
   SID14: '#f6c23e',
+  SID15: '#4e73df',
+  SID16: '#f6c23e',
 }
 const STATUS_VARIANT: Record<string, string> = {
   SID00: 'secondary',
@@ -71,6 +75,8 @@ const STATUS_VARIANT: Record<string, string> = {
   SID12: 'secondary',
   SID13: 'success',
   SID14: 'warning',
+  SID15: 'primary',
+  SID16: 'warning',
 }
 const ROLE_VARIANT: Record<string, string> = {
   Lead: 'warning', Senior: 'primary', Junior: 'success', Intern: 'secondary',
@@ -101,6 +107,7 @@ function PriorityDot({ p }: { p: number | null }) {
 
 export default function Tasks() {
   const routeLocation = useLocation()
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])   // unfiltered, for the relation picker
   const [members, setMembers] = useState<Member[]>([])
@@ -135,6 +142,16 @@ export default function Tasks() {
   const [commentSaving, setCommentSaving] = useState(false)
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState('')
+  const [bulkAssignee, setBulkAssignee] = useState('')
+  const [bulkApplying, setBulkApplying] = useState(false)
+
+  // Confirm close (feature 10): track which inline status editor is pending a close confirmation
+  const [confirmCloseTaskId, setConfirmCloseTaskId] = useState<number | null>(null)
+  const [confirmCloseStatus, setConfirmCloseStatus] = useState<string>('')
 
   // Relations state (for modal)
   const [relations, setRelations] = useState<TaskRelation[]>([])
@@ -511,6 +528,38 @@ export default function Tasks() {
     }
   }
 
+  // Feature 9: keyboard shortcut N → open create modal
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if ((e.target as HTMLElement).isContentEditable) return
+      if (showModal || showDetail) return
+      if (e.key === 'n' || e.key === 'N') openCreate()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [showModal, showDetail])
+
+  // Feature 6: bulk apply
+  const handleBulkApply = async () => {
+    if (selectedIds.size === 0) return
+    const patch: Record<string, any> = {}
+    if (bulkStatus) patch.status = bulkStatus
+    if (bulkAssignee) patch.assignee_id = Number(bulkAssignee)
+    if (!Object.keys(patch).length) return
+    setBulkApplying(true)
+    try {
+      await bulkUpdateTasks(Array.from(selectedIds), patch)
+      setSelectedIds(new Set())
+      setBulkStatus('')
+      setBulkAssignee('')
+      load()
+    } finally {
+      setBulkApplying(false)
+    }
+  }
+
   const toggleLabel = (id: number) => {
     const ids: number[] = form.label_ids ?? []
     setField('label_ids', ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
@@ -568,6 +617,76 @@ export default function Tasks() {
         </div>
       )}
 
+      {/* Feature 7: Quick filter chips */}
+      {(() => {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+        const nextWeekStr = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+        type Chip = { label: string; icon: string; match: () => boolean; apply: () => void }
+        const chips: Chip[] = [
+          {
+            label: 'All',
+            icon: 'bi-list-ul',
+            match: () => !filters.end_date_to && !filters.end_date_from && !filters.status && !(filters.exclude_status?.length),
+            apply: () => setFilters({ sort_by: filters.sort_by, sort_order: filters.sort_order }),
+          },
+          {
+            label: 'Overdue',
+            icon: 'bi-exclamation-triangle',
+            match: () => filters.end_date_to === yesterdayStr && !filters.end_date_from && (filters.exclude_status ?? []).includes('SID12'),
+            apply: () => setFilters(f => ({ sort_by: f.sort_by, sort_order: f.sort_order, end_date_to: yesterdayStr, exclude_status: ['SID12', 'SID13'] })),
+          },
+          {
+            label: 'Due Today',
+            icon: 'bi-clock',
+            match: () => filters.end_date_from === todayStr && filters.end_date_to === todayStr,
+            apply: () => setFilters(f => ({ sort_by: f.sort_by, sort_order: f.sort_order, end_date_from: todayStr, end_date_to: todayStr })),
+          },
+          {
+            label: 'Due This Week',
+            icon: 'bi-calendar-week',
+            match: () => filters.end_date_from === todayStr && filters.end_date_to === nextWeekStr,
+            apply: () => setFilters(f => ({ sort_by: f.sort_by, sort_order: f.sort_order, end_date_from: todayStr, end_date_to: nextWeekStr })),
+          },
+          {
+            label: 'Not Started',
+            icon: 'bi-circle',
+            match: () => filters.status === 'SID00',
+            apply: () => setFilters(f => ({ sort_by: f.sort_by, sort_order: f.sort_order, status: 'SID00' })),
+          },
+        ]
+        return (
+          <div className="quick-filter-chips">
+            {chips.map(c => (
+              <button key={c.label} className={`quick-chip${c.match() ? ' active' : ''}`} onClick={c.apply}>
+                <i className={`bi ${c.icon}`} />{c.label}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
+
+      {/* Feature 6: Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="bulk-action-bar">
+          <span className="bulk-count"><i className="bi bi-check2-square me-1" />{selectedIds.size} selected</span>
+          <Form.Select size="sm" style={{ width: 160 }} value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
+            <option value="">Set Status…</option>
+            {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Form.Select>
+          <Form.Select size="sm" style={{ width: 160 }} value={bulkAssignee} onChange={e => setBulkAssignee(e.target.value)}>
+            <option value="">Set Assignee…</option>
+            {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </Form.Select>
+          <Button size="sm" variant="primary" onClick={handleBulkApply} disabled={bulkApplying || (!bulkStatus && !bulkAssignee)}>
+            {bulkApplying ? <Spinner animation="border" size="sm" className="me-1" /> : <i className="bi bi-check-lg me-1" />}Apply
+          </Button>
+          <Button size="sm" variant="outline-secondary" className="ms-auto" onClick={() => setSelectedIds(new Set())}>
+            <i className="bi bi-x" /> Clear
+          </Button>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="card filter-card mb-3">
         <div className="card-body py-2">
@@ -579,7 +698,7 @@ export default function Tasks() {
             </Form.Select>
             <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 120 }} value={filters.status ?? ''} onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}>
               <option value="">All Status</option>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
+              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Form.Select>
             <Form.Select size="sm" style={{ flex: '1 1 0', minWidth: 110 }} value={filters.task_type ?? ''} onChange={e => setFilters(f => ({ ...f, task_type: e.target.value || undefined }))}>
               <option value="">All Types</option>
@@ -677,7 +796,18 @@ export default function Tasks() {
             <Table className="pd-table mb-0" hover responsive>
               <thead>
                 <tr>
-                  <th className="ps-3" style={{ width: 50 }}>P#</th>
+                  <th style={{ width: 36 }} className="ps-2" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                      checked={tasks.length > 0 && tasks.every(t => selectedIds.has(t.id))}
+                      onChange={e => {
+                        if (e.target.checked) setSelectedIds(new Set(tasks.map(t => t.id)))
+                        else setSelectedIds(new Set())
+                      }}
+                    />
+                  </th>
+                  <th className="ps-2" style={{ width: 50 }}>P#</th>
                   <th style={{ width: 80 }}>ID</th>
                   <th>Title</th>
                   <th style={{ width: 90 }}>Type</th>
@@ -694,11 +824,25 @@ export default function Tasks() {
                 {tasks.map(task => (
                   <tr
                     key={task.id}
-                    className={task.color === 'red' ? 'row-overdue' : ''}
+                    className={task.color === 'red' ? 'row-overdue' : task.color === 'orange' ? 'row-due-soon' : ''}
                     onClick={() => openDetail(task)}
                   >
+                    {/* Checkbox — feature 6 */}
+                    <td className="ps-2" style={{ width: 36 }} onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                        checked={selectedIds.has(task.id)}
+                        onChange={e => {
+                          const next = new Set(selectedIds)
+                          if (e.target.checked) next.add(task.id)
+                          else next.delete(task.id)
+                          setSelectedIds(next)
+                        }}
+                      />
+                    </td>
                     {/* Priority — inline editable */}
-                    <td className="ps-3" style={{ position: 'relative' }}
+                    <td className="ps-2" style={{ position: 'relative' }}
                       onClick={e => { e.stopPropagation(); if (task.assignee) openInline(task.id, 'priority', task.priority ?? 1) }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === ('priority') ? (
@@ -762,16 +906,27 @@ export default function Tasks() {
                         </div>
                       ) : (
                         <>
-                          {task.title}
-                          {task.checklist_total > 0 && (
-                            <span
-                              className="badge ms-2"
-                              style={{ background: '#eef0f8', color: '#6b6f8a', fontWeight: 600, fontSize: '0.68rem' }}
-                              title="Checklist progress"
-                            >
-                              <i className="bi bi-check2-square me-1" />{task.checklist_done}/{task.checklist_total}
-                            </span>
-                          )}
+                          <div>
+                            {task.title}
+                            {task.checklist_total > 0 && (
+                              <span
+                                className="badge ms-2"
+                                style={{ background: '#eef0f8', color: '#6b6f8a', fontWeight: 600, fontSize: '0.68rem' }}
+                                title="Checklist progress"
+                              >
+                                <i className="bi bi-check2-square me-1" />{task.checklist_done}/{task.checklist_total}
+                              </span>
+                            )}
+                          </div>
+                          {/* Feature 2: task age */}
+                          {(task.status as string) !== 'SID12' && (task.status as string) !== 'SID13' && task.created_at && (() => {
+                            const ageDays = Math.floor((Date.now() - new Date(task.created_at).getTime()) / 86400000)
+                            return ageDays > 0 ? (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                                {ageDays}d old
+                              </div>
+                            ) : null
+                          })()}
                         </>
                       )}
                     </td>
@@ -822,21 +977,50 @@ export default function Tasks() {
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'status' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, top: 0, left: 0 }}>
-                          <Form.Select
-                            size="sm"
-                            autoFocus
-                            className="inline-edit-select"
-                            defaultValue={task.status}
-                            onChange={async e => {
-                              const val = e.target.value
-                              closeInline()
-                              await quickUpdate(task.id, { status: val })
-                            }}
-                            onBlur={() => setTimeout(closeInline, 150)}
-                            onKeyDown={e => { if (e.key === 'Escape') closeInline() }}
-                          >
-                            {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
-                          </Form.Select>
+                          {confirmCloseTaskId === task.id ? (
+                            <div style={{ padding: '4px 2px' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 6 }}>
+                                <i className="bi bi-lock me-1 text-warning" />Close this task?
+                              </div>
+                              <div className="d-flex gap-2">
+                                <Button size="sm" variant="warning" style={{ fontSize: '0.75rem', padding: '2px 10px' }}
+                                  onClick={async () => {
+                                    const st = confirmCloseStatus
+                                    setConfirmCloseTaskId(null)
+                                    setConfirmCloseStatus('')
+                                    closeInline()
+                                    await quickUpdate(task.id, { status: st })
+                                  }}>
+                                  Yes
+                                </Button>
+                                <Button size="sm" variant="outline-secondary" style={{ fontSize: '0.75rem', padding: '2px 10px' }}
+                                  onClick={() => { setConfirmCloseTaskId(null); setConfirmCloseStatus(''); closeInline() }}>
+                                  No
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Form.Select
+                              size="sm"
+                              autoFocus
+                              className="inline-edit-select"
+                              defaultValue={task.status}
+                              onChange={async e => {
+                                const val = e.target.value
+                                if (val === 'SID12' || val === 'SID13') {
+                                  setConfirmCloseTaskId(task.id)
+                                  setConfirmCloseStatus(val)
+                                } else {
+                                  closeInline()
+                                  await quickUpdate(task.id, { status: val })
+                                }
+                              }}
+                              onBlur={() => setTimeout(() => { if (confirmCloseTaskId !== task.id) closeInline() }, 150)}
+                              onKeyDown={e => { if (e.key === 'Escape') { setConfirmCloseTaskId(null); setConfirmCloseStatus(''); closeInline() } }}
+                            >
+                              {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            </Form.Select>
+                          )}
                         </div>
                       ) : (
                         <span className="inline-editable-cell">
@@ -1011,7 +1195,7 @@ export default function Tasks() {
                 ))}
                 {tasks.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="text-center text-muted py-5">
+                    <td colSpan={12} className="text-center text-muted py-5">
                       <i className="bi bi-inbox fs-2 d-block mb-2" />
                       No tasks found. Click <strong>New Task</strong> to get started.
                     </td>
@@ -1115,7 +1299,7 @@ export default function Tasks() {
             <Col md={6}>
               <Form.Label className="small fw-semibold">Status</Form.Label>
               <Form.Select size="sm" value={form.status ?? 'SID00'} onChange={e => setField('status', e.target.value)}>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{k} – {v}</option>)}
+                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </Form.Select>
             </Col>
 

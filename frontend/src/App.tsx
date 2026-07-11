@@ -83,7 +83,7 @@ const STATUS_LABEL: Record<string, string> = {
   SID00:'Not Started', SID01:'Study', SID02:'Requirement', SID03:'POC',
   SID04:'Core Impl',   SID05:'Dev Testing', SID06:'Review', SID07:'Rework',
   SID08:'Ready to Merge', SID09:'Ready to Release', SID10:'Waiting',
-  SID11:'Reopened', SID12:'Closed', SID13:'Released', SID14:'On Hold',
+  SID11:'Reopened', SID12:'Closed', SID13:'Released', SID14:'On Hold', SID15:'Debug', SID16:'Moved to Software',
 }
 
 export default function App() {

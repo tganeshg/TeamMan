@@ -11,6 +11,17 @@ const api = axios.create({ baseURL: '/api' })
 export const getDashboard = () =>
   api.get<DashboardData>('/dashboard').then(r => r.data)
 
+export interface ActivityItem {
+  id: number
+  title: string
+  status: string
+  updated_at: string | null
+  assignee: string | null
+}
+
+export const getDashboardActivity = () =>
+  api.get<ActivityItem[]>('/dashboard/activity').then(r => r.data)
+
 // ── Members ────────────────────────────────────────────────────────────────
 export const getMembers = () =>
   api.get<Member[]>('/members').then(r => r.data)
@@ -107,6 +118,9 @@ export const updateTask = (id: number, data: Partial<{
 
 export const deleteTask = (id: number) =>
   api.delete(`/tasks/${id}`)
+
+export const bulkUpdateTasks = (task_ids: number[], patch: Record<string, any>) =>
+  api.post<{ updated: number }>('/tasks/bulk-update', { task_ids, patch }).then(r => r.data)
 
 export const assignTask = (id: number, assignee_id: number, priority: number) =>
   api.post<Task>(`/tasks/${id}/assign`, { assignee_id, priority }).then(r => r.data)

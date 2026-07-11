@@ -19,6 +19,7 @@ STATUS_LABEL = {
     "SID06": "Review", "SID07": "Rework", "SID08": "Ready to Merge",
     "SID09": "Ready to Release", "SID10": "Waiting", "SID11": "Reopened",
     "SID12": "Closed", "SID13": "Released", "SID14": "On Hold",
+    "SID15": "Debug", "SID16": "Moved to Software",
 }
 
 
