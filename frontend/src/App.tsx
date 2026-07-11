@@ -105,7 +105,7 @@ export default function App() {
       : pageRaw.sub,
   }
   const visibleNavItems = isLead
-    ? navItems.filter(n => n.to !== '/my-tasks')
+    ? navItems  // lead sees all nav items including My Tasks
     : [navItems.find(n => n.to === '/my-tasks')!, ...navItems.filter(n => n.to !== '/my-tasks')]
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
