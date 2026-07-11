@@ -159,11 +159,18 @@ def change_password(
 
 
 @router.get("/me")
-def me(user: dict = Depends(get_current_user)):
+def me(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    member_id = user["id"]
+    name = user["name"]
+    # Always resolve from DB so stale tokens still work correctly
+    member = db.query(TeamMember).filter(TeamMember.email == user["email"]).first()
+    if member:
+        member_id = member.id
+        name = member.name
     return {
-        "id": user["id"],
+        "id": member_id,
         "email": user["email"],
-        "name": user["name"],
+        "name": name,
         "role": user["role"],
     }
 
