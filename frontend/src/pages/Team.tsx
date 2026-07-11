@@ -119,9 +119,11 @@ export default function Team() {
                 <Button variant="outline-secondary" size="sm" className="py-0" onClick={() => openEdit(m)}>
                   <i className="bi bi-pencil" />
                 </Button>
-                <Button variant="outline-danger" size="sm" className="py-0" onClick={() => setDeleteId(m.id)}>
-                  <i className="bi bi-trash" />
-                </Button>
+                {m.role !== 'Lead' && (
+                  <Button variant="outline-danger" size="sm" className="py-0" onClick={() => setDeleteId(m.id)}>
+                    <i className="bi bi-trash" />
+                  </Button>
+                )}
               </div>
             </div>
           </Col>
