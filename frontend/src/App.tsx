@@ -106,7 +106,7 @@ export default function App() {
   }
   const visibleNavItems = isLead
     ? navItems.filter(n => n.to !== '/my-tasks')
-    : navItems
+    : [navItems.find(n => n.to === '/my-tasks')!, ...navItems.filter(n => n.to !== '/my-tasks')]
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
