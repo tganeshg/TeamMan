@@ -422,7 +422,7 @@ export default function App() {
           <hr style={{ borderColor: 'var(--card-border)', marginBottom: 24, marginTop: 0 }} />
 
           <Routes>
-            <Route path="/" element={isLead ? <Dashboard /> : <Navigate to="/my-tasks" replace />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/my-tasks" element={<MyTaskBoard />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/team" element={<Team />} />
