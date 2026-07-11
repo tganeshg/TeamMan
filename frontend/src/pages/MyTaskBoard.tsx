@@ -99,9 +99,9 @@ export default function MyTaskBoard() {
   if (!user?.id) {
     return (
       <div className="card border-0 shadow-sm rounded-3 p-4 text-center" style={{ maxWidth: 480, margin: '40px auto' }}>
-        <i className="bi bi-speedometer2 fs-2 mb-2" style={{ color: '#4e73df' }} />
+        <i className="bi bi-person-x fs-2 mb-2" style={{ color: '#858796' }} />
         <p className="mb-0" style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          As team lead, view the Dashboard for team overview.
+          Your account is not linked to a team member entry. Ask the lead to add your email to the team.
         </p>
       </div>
     )

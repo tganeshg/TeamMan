@@ -100,7 +100,11 @@ def login(body: LoginBody, db: Session = Depends(get_db)):
             )
         if not verify_password(body.password, lead_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-        return _build_token_response("lead", "Project Lead", lead_email, None)
+        # Look up team member entry for the lead (so My Task Board works)
+        lead_member = db.query(TeamMember).filter(TeamMember.email == lead_email).first()
+        lead_name = lead_member.name if lead_member else "Project Lead"
+        lead_id = lead_member.id if lead_member else None
+        return _build_token_response("lead", lead_name, lead_email, lead_id)
 
     # Member login
     member = db.query(TeamMember).filter(TeamMember.email == body.email).first()
