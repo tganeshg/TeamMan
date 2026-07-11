@@ -173,7 +173,7 @@ export default function Team() {
                 value={form.role}
                 onChange={e => setForm(f => ({ ...f, role: e.target.value as 'Lead' | 'Senior' | 'Junior' | 'Intern' }))}
               >
-                {['Lead', 'Senior', 'Junior', 'Intern'].map(r => (
+                {['Senior', 'Junior', 'Intern'].map(r => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </Form.Select>

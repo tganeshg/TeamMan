@@ -25,6 +25,8 @@ def list_members(db: Session = Depends(get_db)):
 
 @router.post("", response_model=MemberOut, status_code=201)
 def create_member(payload: MemberCreate, db: Session = Depends(get_db)):
+    if payload.role == "Lead":
+        raise HTTPException(status_code=400, detail="A Lead already exists. Only one Lead is allowed per team.")
     existing = db.query(TeamMember).filter(TeamMember.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered.")
