@@ -37,6 +37,11 @@ def _ensure_schema():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE todo_threads ADD COLUMN member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE"))
 
+    portal_cols = {c["name"] for c in insp.get_columns("portal_credentials")}
+    if "member_id" not in portal_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE portal_credentials ADD COLUMN member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE"))
+
     task_cols = {c["name"] for c in insp.get_columns("tasks")}
     if "progress" not in task_cols:
         with engine.begin() as conn:

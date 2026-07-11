@@ -120,6 +120,7 @@ class PortalCredential(Base):
     __tablename__ = "portal_credentials"
 
     id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("team_members.id", ondelete="CASCADE"), nullable=True)
     portal_url = Column(String, nullable=False)
     api_token_enc = Column(Text, nullable=False)
 
