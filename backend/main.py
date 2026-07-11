@@ -69,7 +69,7 @@ def _ensure_schema():
             existing = conn.execute(text(f"SELECT id FROM team_members WHERE email='{LEAD_EMAIL}'")).fetchone()
             if not existing:
                 conn.execute(text(
-                    f"INSERT INTO team_members (name, email, role, password_set) VALUES ('Project Lead', '{LEAD_EMAIL}', 'Lead', 1)"
+                    f"INSERT INTO team_members (name, email, role, password_set, created_at) VALUES ('Project Lead', '{LEAD_EMAIL}', 'Lead', 1, datetime('now'))"
                 ))
             # Mark as done
             conn.execute(text("INSERT OR REPLACE INTO app_config (key, value) VALUES ('db_seeded_v2', '1')"))

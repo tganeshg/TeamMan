@@ -24,7 +24,7 @@ class MemberUpdate(BaseModel):
 
 class MemberOut(MemberBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
     task_count: Optional[int] = 0
 
     class Config:

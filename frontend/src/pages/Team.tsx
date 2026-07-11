@@ -26,7 +26,7 @@ export default function Team() {
 
   const load = () => {
     setLoading(true)
-    getMembers().then(setMembers).finally(() => setLoading(false))
+    getMembers().then(setMembers).catch(() => {}).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
