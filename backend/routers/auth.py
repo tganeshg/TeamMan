@@ -184,3 +184,13 @@ def lead_set_password(
 ):
     _set_config(db, "lead_password_hash", hash_password(body.new_password))
     return {"ok": True}
+
+
+@router.post("/lead-init-password")
+def lead_init_password(body: LeadSetPasswordBody, db: Session = Depends(get_db)):
+    """One-time endpoint to set lead password when not yet configured."""
+    existing = _get_lead_password_hash(db)
+    if existing:
+        raise HTTPException(status_code=403, detail="Lead password already set. Use change-password.")
+    _set_config(db, "lead_password_hash", hash_password(body.new_password))
+    return {"ok": True}

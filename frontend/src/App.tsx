@@ -7,7 +7,10 @@ import Team from './pages/Team'
 import Todo from './pages/Todo'
 import Settings from './pages/Settings'
 import Reports from './pages/Reports'
+import Login from './pages/Login'
+import SetPassword from './pages/SetPassword'
 import { getReleases, getTasks } from './api/client'
+import { useAuth } from './AuthContext'
 import type { Task } from './types'
 
 const navItems = [
@@ -20,7 +23,7 @@ const navItems = [
 ]
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
-  '/': { title: 'Dashboard', sub: 'Welcome back, Project Lead 👋' },
+  '/': { title: 'Dashboard', sub: '' },
   '/tasks': { title: 'Task Management', sub: 'Manage and track your team tasks' },
   '/team': { title: 'Team Members', sub: 'Manage your Prime Team' },
   '/todo': { title: 'Todo', sub: 'Threads, action items and meeting notes' },
@@ -87,9 +90,14 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function App() {
+  const { user, logout, loading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const page = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
+  const pageRaw = PAGE_TITLES[location.pathname] ?? { title: 'PrimeDesk', sub: '' }
+  const page = {
+    title: pageRaw.title,
+    sub: location.pathname === '/' && user ? `Welcome back, ${user.name} 👋` : pageRaw.sub,
+  }
   const [activeReleases, setActiveReleases] = useState<{ name: string; release_date: string }[]>([])
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -161,6 +169,25 @@ export default function App() {
       .catch(() => {})
   }, [location.pathname])
 
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f4f6' }}>
+        <div className="spinner-border" style={{ color: '#4e73df', width: 40, height: 40 }} role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/set-password" element={<SetPassword />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    )
+  }
+
   return (
     <div>
       {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -198,10 +225,14 @@ export default function App() {
 
         <div className="pd-sidebar-footer">
           <div className="pd-sidebar-user">
-            <div className="pd-sidebar-avatar">PL</div>
+            <div className="pd-sidebar-avatar">
+              {user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+            </div>
             <div>
-              <div style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600 }}>Project Lead</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem' }}>Administrator</div>
+              <div style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600 }}>{user.name}</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem' }}>
+                {user.role === 'lead' ? 'Administrator' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </div>
             </div>
           </div>
         </div>
@@ -311,10 +342,14 @@ export default function App() {
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <div className="pd-user-pill" style={{ cursor: 'pointer' }}
                 onClick={() => setUserMenuOpen(o => !o)}>
-                <div className="pd-user-pill-avatar">PL</div>
+                <div className="pd-user-pill-avatar">
+                  {user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
                 <div>
-                  <div className="pd-user-pill-name">Project Lead</div>
-                  <div className="pd-user-pill-role">Admin</div>
+                  <div className="pd-user-pill-name">{user.name}</div>
+                  <div className="pd-user-pill-role">
+                    {user.role === 'lead' ? 'Admin' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  </div>
                 </div>
                 <i className={`bi bi-chevron-${userMenuOpen ? 'up' : 'down'} ms-1`} style={{ fontSize: '0.75rem', color: '#9e9fb4' }} />
               </div>
@@ -343,6 +378,14 @@ export default function App() {
                       {item.label}
                     </a>
                   ))}
+                  <a href="#" onClick={e => { e.preventDefault(); logout(); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: '0.87rem', color: '#e74a3b', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#e74a3b11')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <i className="bi bi-box-arrow-right" style={{ color: '#e74a3b', fontSize: '0.9rem' }} />
+                    Sign Out
+                  </a>
                   <div style={{ borderTop: '1px solid var(--card-border)', padding: '8px 14px 10px' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 5 }}>About</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>

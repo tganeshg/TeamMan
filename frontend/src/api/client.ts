@@ -7,6 +7,27 @@ import type {
 
 const api = axios.create({ baseURL: '/api' })
 
+// ── Auth token ─────────────────────────────────────────────────────────────
+export const getToken = () => localStorage.getItem('pd_token')
+export const setToken = (t: string) => localStorage.setItem('pd_token', t)
+export const clearToken = () => localStorage.removeItem('pd_token')
+
+// Attach token to every request
+api.interceptors.request.use(cfg => {
+  const token = getToken()
+  if (token) cfg.headers['Authorization'] = `Bearer ${token}`
+  return cfg
+})
+
+// On 401 → clear token (will trigger redirect via React)
+api.interceptors.response.use(
+  r => r,
+  err => {
+    if (err.response?.status === 401) clearToken()
+    return Promise.reject(err)
+  }
+)
+
 // ── Dashboard ──────────────────────────────────────────────────────────────
 export const getDashboard = () =>
   api.get<DashboardData>('/dashboard').then(r => r.data)
@@ -241,3 +262,24 @@ export const reorderTodoThreads = (orderedIds: number[]) =>
 
 export const reorderTodoItems = (orderedIds: number[]) =>
   api.put('/todo-items/reorder', { ordered_ids: orderedIds })
+
+// ── Auth ────────────────────────────────────────────────────────────────────
+export interface AuthUser { id: number | null; email: string; name: string; role: 'lead' | 'member' }
+
+export const login = (email: string, password: string) =>
+  api.post<{ access_token: string; token_type: string; role: string; name: string; id: number | null } | { first_login: true; email: string }>('/auth/login', { email, password }).then(r => r.data)
+
+export const setPasswordApi = (email: string, new_password: string) =>
+  api.post<{ access_token: string; token_type: string; role: string; name: string; id: number | null }>('/auth/set-password', { email, new_password }).then(r => r.data)
+
+export const changePasswordApi = (old_password: string, new_password: string) =>
+  api.post<{ ok: boolean }>('/auth/change-password', { old_password, new_password }).then(r => r.data)
+
+export const getMe = () =>
+  api.get<AuthUser>('/auth/me').then(r => r.data)
+
+export const leadSetPasswordApi = (new_password: string) =>
+  api.post<{ ok: boolean }>('/auth/lead-set-password', { new_password }).then(r => r.data)
+
+export const leadInitPasswordApi = (new_password: string) =>
+  api.post<{ ok: boolean }>('/auth/lead-init-password', { new_password }).then(r => r.data)
