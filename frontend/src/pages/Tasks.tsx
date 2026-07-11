@@ -395,9 +395,14 @@ export default function Tasks() {
     setDetailLoading(true)
     setSelectedTask(null)
     setCommentText('')
-    const d = await getTask(task.id)
-    setSelectedTask(d)
-    setDetailLoading(false)
+    try {
+      const d = await getTask(task.id)
+      setSelectedTask(d)
+    } catch {
+      // ignore — offcanvas will show loading state
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   const openCreate = () => {
@@ -853,7 +858,7 @@ export default function Tasks() {
                     )}
                     {/* Priority — inline editable */}
                     <td className="ps-2" style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); if (task.assignee) openInline(task.id, 'priority', task.priority ?? 1) }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'priority', task.priority ?? 1) } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === ('priority') ? (
                         <div ref={inlineRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '4px 6px', top: 0, left: 0, width: 70 }}>
@@ -948,7 +953,7 @@ export default function Tasks() {
                     {/* Assignee — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'assignee', task.assignee?.id ?? '') }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'assignee', task.assignee?.id ?? '') } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'assignee' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 160, top: 0, left: 0 }}>
@@ -983,7 +988,7 @@ export default function Tasks() {
                     {/* Status — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'status', task.status) }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'status', task.status) } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'status' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, top: 0, left: 0 }}>
@@ -1051,7 +1056,7 @@ export default function Tasks() {
                     {/* Progress — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'progress', task.progress) }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'progress', task.progress) } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'progress' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 110, top: 0, left: 0 }}>
@@ -1082,7 +1087,7 @@ export default function Tasks() {
                     {/* Due Date — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'due_date', task.end_date ?? '') }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'due_date', task.end_date ?? '') } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'due_date' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 160, top: 0, left: 0 }}>
@@ -1114,7 +1119,7 @@ export default function Tasks() {
                     {/* Labels — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'labels', task.labels.map(l => l.id)) }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'labels', task.labels.map(l => l.id)) } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'labels' ? (
                         <div ref={inlineRef} onClick={e => e.stopPropagation()} style={{ position: 'absolute', display: 'inline-block', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '6px 8px', top: 0, left: 0 }}>
@@ -1160,7 +1165,7 @@ export default function Tasks() {
                     {/* Release — inline editable */}
                     <td
                       style={{ position: 'relative' }}
-                      onClick={e => { e.stopPropagation(); openInline(task.id, 'release', task.release_id ?? '') }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'release', task.release_id ?? '') } }}
                     >
                       {inlineEdit?.taskId === task.id && inlineEdit?.field === 'release' ? (
                         <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 160, top: 0, left: 0 }}>
