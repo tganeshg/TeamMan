@@ -57,32 +57,21 @@ def _ensure_schema():
 
     # ── Seed lead member ──────────────────────────────────────────────────
     # Ensure a TeamMember row for lead@teamman.local always exists.
-    # Also: one-time DB cleanup — wipe tasks, todos, non-lead members.
-    from models import TeamMember as TM, Task as T, TodoThread, TodoItem, AppConfig as AC
+    # This is safe to run on any existing database — it only adds the lead
+    # member if not present, never deletes or modifies existing data.
     from auth_utils import LEAD_EMAIL
     with engine.begin() as conn:
-        cleaned = conn.execute(text("SELECT value FROM app_config WHERE key='db_seeded_v2'")).fetchone()
-        if not cleaned:
-            # Wipe data tables
-            conn.execute(text("DELETE FROM task_relations"))
-            conn.execute(text("DELETE FROM task_labels"))
-            conn.execute(text("DELETE FROM task_checklist_items"))
-            conn.execute(text("DELETE FROM attachments"))
-            conn.execute(text("DELETE FROM comments"))
-            conn.execute(text("DELETE FROM tasks"))
-            conn.execute(text("DELETE FROM todo_items"))
-            conn.execute(text("DELETE FROM todo_threads"))
-            conn.execute(text("DELETE FROM releases"))
-            # Remove all members except lead
-            conn.execute(text(f"DELETE FROM team_members WHERE email != '{LEAD_EMAIL}'"))
-            # Ensure lead member exists
+        seeded = conn.execute(text("SELECT value FROM app_config WHERE key='lead_seeded_v1'")).fetchone()
+        if not seeded:
             existing = conn.execute(text(f"SELECT id FROM team_members WHERE email='{LEAD_EMAIL}'")).fetchone()
             if not existing:
                 conn.execute(text(
                     f"INSERT INTO team_members (name, email, role, password_set, created_at) VALUES ('Project Lead', '{LEAD_EMAIL}', 'Lead', 1, datetime('now'))"
                 ))
-            # Mark as done
-            conn.execute(text("INSERT OR REPLACE INTO app_config (key, value) VALUES ('db_seeded_v2', '1')"))
+            else:
+                # Fix NULL created_at if present from old seed
+                conn.execute(text(f"UPDATE team_members SET created_at = datetime('now') WHERE email='{LEAD_EMAIL}' AND created_at IS NULL"))
+            conn.execute(text("INSERT OR REPLACE INTO app_config (key, value) VALUES ('lead_seeded_v1', '1')"))
 
 
 _ensure_schema()

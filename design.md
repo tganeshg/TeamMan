@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.17 (Phase 1 Complete)
-**Last Updated:** 2026-06-25
+**Version:** 2.0
+**Last Updated:** 2026-07-11
 
 ---
 
@@ -51,6 +51,8 @@ PrimeDesk is a **local web application** — the backend runs on `localhost` and
 | Validation | Pydantic | v2.7.1 |
 | HTTP Client | httpx | 0.27.0 |
 | Encryption | cryptography (Fernet) | 42.0.7 |
+| JWT Auth | python-jose[cryptography] | 3.3.0 |
+| Password Hashing | bcrypt | 4.1.3 |
 | File I/O | aiofiles | 23.2.1 |
 | PDF Export | reportlab | 4.2.2 |
 | Word Export | python-docx | 1.1.2 |
@@ -116,6 +118,7 @@ TeamMan/
             ├── Tasks.tsx
             ├── Team.tsx
             ├── Todo.tsx
+            ├── MyTaskBoard.tsx    ← Per-member board (member role view)
             ├── Reports.tsx
             └── Settings.tsx
 ```
@@ -214,6 +217,12 @@ In addition to the cards, the two panels below them are click-through to the sam
 - Labels management
 - Releases section removed (managed in Reports page)
 
+#### My Task Board
+- Available to members (non-lead) after login
+- Shows only tasks assigned to the logged-in member
+- Read-only view: no create/edit/delete task controls
+- Displays status, progress, due date, and labels per task
+
 ---
 
 ## 5. Database Schema
@@ -237,7 +246,7 @@ In addition to the cards, the two panels below them are click-through to the sam
 | task_type | TEXT | `bug` or `feature` |
 | assignee_id | INTEGER FK | → team_members.id, SET NULL on delete |
 | priority | INTEGER | Per-member sequential position (required if assigned) |
-| status | TEXT | SID00–SID14 (default: SID00) |
+| status | TEXT | SID00–SID16 (default: SID00) — SID15 = Debug, SID16 = Moved to Software |
 | progress | INTEGER | 0–100 in steps of 10 (default 0); 100 auto-closes. Added via idempotent startup migration |
 | start_date | DATE | Nullable |
 | end_date | DATE | Nullable |
@@ -267,10 +276,43 @@ In addition to the cards, the two panels below them are click-through to the sam
 
 — created automatically by `create_all` (new table, so no migration needed).
 
-### `team_members`, `labels`, `task_labels`, `comments`, `attachments`, `portal_credentials`, `app_config`, `todo_threads`, `todo_items`
-— largely unchanged from v1.2 (see previous version for full schema).
+### `team_members` (additions in v2.0)
+| Column | Type | Notes |
+|---|---|---|
+| … | … | (all v1 columns unchanged) |
+| password_hash | TEXT | bcrypt hash; NULL until password is set |
+| password_set | BOOLEAN DEFAULT 0 | 1 once the member has set their own password |
+
+### `todo_threads` (additions in v2.0)
+| Column | Type | Notes |
+|---|---|---|
+| … | … | (all v1 columns unchanged) |
+| member_id | INTEGER FK | → team_members.id ON DELETE CASCADE; scopes thread to owner |
+
+### `portal_credentials` (additions in v2.0)
+| Column | Type | Notes |
+|---|---|---|
+| … | … | (all v1 columns unchanged) |
+| member_id | INTEGER FK | → team_members.id ON DELETE CASCADE; scopes credentials to owner |
+
+### `labels`, `task_labels`, `comments`, `attachments`, `app_config`, `todo_items`
+— unchanged from v1.x.
 
 `todo_threads` and `todo_items` each carry an integer `position` column for manual drag-and-drop ordering (threads sorted by `position` asc; items by `position` within a thread). The `position` column on `todo_threads` is added at startup by an idempotent migration (`_ensure_schema` in `main.py`), since `create_all` does not alter existing tables.
+
+---
+
+## Authentication & Roles
+
+- JWT-based auth (HS256, 24h expiry)
+- Lead account: hardcoded email `lead@teamman.local`, password stored as bcrypt hash in AppConfig
+- Members: login with their email; first login forces password setup
+- Roles: `lead` (full access) | `member` (read-only tasks, own todos, own portal creds)
+- All API routes protected by JWT middleware except /auth/* and /health
+
+## Per-User Isolation
+
+Todos (threads + items) and portal credentials are scoped to `member_id`. Each member sees and manages only their own records. The lead account has unrestricted access to all records across all members.
 
 ---
 
@@ -431,3 +473,16 @@ Both exports generate the same document structure:
 | `tasks.progress` added via idempotent startup migration | `create_all` can't add a column to the existing table; default 0 keeps existing tasks backward-compatible |
 | Excel export shares the list's `_query_tasks` filter pipeline | Guarantees the exported rows match the on-screen list for any filter combination; "no filters" simply passes no params |
 | Export generated server-side with openpyxl (like reports' PDF/Word) | Consistent with existing export approach; no new frontend dependency on the Node 16 / Vite 4 toolchain |
+| JWT added in v2.0 (python-jose + bcrypt) | Protects all routes; HS256 with 24h token TTL; bcrypt for member passwords |
+| Lead password stored as bcrypt hash in AppConfig, not team_members | Avoids coupling lead auth to the ORM model; set on first login |
+| `db_seeded_v2` data-wipe block removed | Replacing with `lead_seeded_v1` — safe to run on any existing database without deleting data |
+
+---
+
+## 12. Version History
+
+| Version | Date | Summary |
+|---|---|---|
+| 1.0 | — | Initial release: task management, member hierarchy, SID status codes, priority queues |
+| 1.17 | 2026-06-25 | Phase 1 complete: task checklists, inline editing, Excel export, dark mode, ArchitectUI theme, todo drag-and-drop, include/exclude filter builder, progress field, clickable dashboard cards |
+| 2.0 | 2026-07-11 | JWT authentication (HS256, 24h), bcrypt member passwords, lead account with forced first-login password setup, role-based access (lead full / member read-only + own todos + own portal creds), per-user todo and portal credential isolation (member_id FK), My Task Board page for members, SID15 (Debug) and SID16 (Moved to Software) status codes, safe DB migration replacing data-wipe seed with `lead_seeded_v1` |

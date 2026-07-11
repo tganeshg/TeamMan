@@ -146,12 +146,29 @@ TeamMan/
 
 ---
 
-## First-Time Setup — Mantis Portal
+## First-Time Setup
 
-1. Open **Settings** in the sidebar
-2. Enter your MantisHub portal URL (e.g. `https://yourteam.mantishub.io`)
-3. Paste your API token from `your-portal/account_api_token_page.php`
-4. Click **Save**, then **Test Connection**
+### Lead login
+1. Open `http://localhost:3000` — you will be redirected to the login screen.
+2. Enter the lead email `lead@teamman.local` and the temporary password.
+3. On first login you will be prompted to set a permanent password.
+
+### Mantis Portal
+1. Open **Settings** in the sidebar.
+2. Enter your MantisHub portal URL (e.g. `https://yourteam.mantishub.io`).
+3. Paste your API token from `your-portal/account_api_token_page.php`.
+4. Click **Save**, then **Test Connection**.
+
+---
+
+## User Roles
+
+| Role | Access |
+|---|---|
+| **Lead** (`lead@teamman.local`) | Full access — create/edit/delete tasks, manage members, view all todos and portal credentials, all reports and settings |
+| **Member** | Read-only task list (no create/edit/delete), My Task Board (own assigned tasks), own todo threads, own portal credentials; cannot access team management or reports |
+
+Members are added by the lead via the Team page. Each member receives a login email and must set their password on first login.
 
 ---
 
@@ -166,7 +183,8 @@ TeamMan/
 | SID04 | Core Impl | SID12 | Closed |
 | SID05 | Dev Testing | SID13 | Released |
 | SID06 | Review | SID14 | On Hold |
-| SID07 | Rework | | |
+| SID07 | Rework | SID15 | Debug |
+| | | SID16 | Moved to Software |
 
 ---
 
@@ -206,7 +224,19 @@ TeamMan/
 
 ## Version
 
-**Phase 1 — Complete**
+**v2.0 — JWT Auth + Role-Based Access**
+
+New in v2.0:
+- JWT authentication (HS256, 24h expiry) — all routes protected except `/auth/*` and `/health`
+- Lead account (`lead@teamman.local`) with forced first-login password setup
+- Member login with per-member passwords (bcrypt); first login forces password setup
+- Role-based access: lead (full) vs member (read-only tasks, own todos, own portal creds)
+- My Task Board page for members showing their assigned tasks
+- Per-user isolation for todo threads and portal credentials (`member_id`)
+- SID15 (Debug) and SID16 (Moved to Software) status codes
+- Safe DB migration — no more data-wipe on schema upgrade
+
+**Phase 1 — Complete (v1.x)**
 - Full task management with SID status workflow and gap-free priority queues
 - Task relations (Duplicate / Parent / Child / Blocks / Blocked By / Related To)
 - Mantis portal integration
