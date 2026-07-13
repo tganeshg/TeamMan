@@ -37,6 +37,16 @@ def _ensure_schema():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE todo_threads ADD COLUMN member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE"))
 
+    # Assign any unowned todo threads (member_id IS NULL) to the first Lead-role member
+    with engine.begin() as conn:
+        lead_row = conn.execute(text(
+            "SELECT id FROM team_members WHERE role = 'Lead' ORDER BY id ASC LIMIT 1"
+        )).fetchone()
+        if lead_row:
+            conn.execute(text(
+                "UPDATE todo_threads SET member_id = :lid WHERE member_id IS NULL"
+            ), {"lid": lead_row[0]})
+
     portal_cols = {c["name"] for c in insp.get_columns("portal_credentials")}
     if "member_id" not in portal_cols:
         with engine.begin() as conn:
@@ -81,7 +91,7 @@ app = FastAPI(title="TeamMan API", version="1.0.0")
 # CORS must be added before the auth middleware so preflight OPTIONS pass through
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

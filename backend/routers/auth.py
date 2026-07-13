@@ -116,7 +116,9 @@ def login(body: LoginBody, db: Session = Depends(get_db)):
     if not verify_password(body.password, member.password_hash or ""):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    return _build_token_response("member", member.name, member.email, member.id)
+    # Members with Lead role in the team get full lead privileges
+    role = "lead" if member.role == "Lead" else "member"
+    return _build_token_response(role, member.name, member.email, member.id)
 
 
 @router.post("/set-password")
@@ -134,7 +136,8 @@ def set_password(body: SetPasswordBody, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(member)
 
-    return _build_token_response("member", member.name, member.email, member.id)
+    role = "lead" if member.role == "Lead" else "member"
+    return _build_token_response(role, member.name, member.email, member.id)
 
 
 @router.post("/change-password")
@@ -162,16 +165,20 @@ def change_password(
 def me(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     member_id = user["id"]
     name = user["name"]
-    # Always resolve from DB so stale tokens still work correctly
+    role = user["role"]
+    # Always resolve from DB so stale tokens pick up correct id, name, and role
     member = db.query(TeamMember).filter(TeamMember.email == user["email"]).first()
     if member:
         member_id = member.id
         name = member.name
+        # Promote to lead if team_members role is Lead
+        if member.role == "Lead":
+            role = "lead"
     return {
         "id": member_id,
         "email": user["email"],
         "name": name,
-        "role": user["role"],
+        "role": role,
     }
 
 
