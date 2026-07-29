@@ -52,6 +52,16 @@ def _ensure_schema():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE portal_credentials ADD COLUMN member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE"))
 
+    # Assign any unowned portal credentials (member_id IS NULL) to the first Lead-role member
+    with engine.begin() as conn:
+        lead_row = conn.execute(text(
+            "SELECT id FROM team_members WHERE role = 'Lead' AND email != 'lead@teamman.local' ORDER BY id ASC LIMIT 1"
+        )).fetchone()
+        if lead_row:
+            conn.execute(text(
+                "UPDATE portal_credentials SET member_id = :lid WHERE member_id IS NULL"
+            ), {"lid": lead_row[0]})
+
     task_cols = {c["name"] for c in insp.get_columns("tasks")}
     if "progress" not in task_cols:
         with engine.begin() as conn:

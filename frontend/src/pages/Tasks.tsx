@@ -591,12 +591,19 @@ export default function Tasks() {
 
   const headerEl = document.getElementById('page-header-actions')
 
-  const downloadExport = (f?: TaskFilters) => {
+  const downloadExport = async (f?: TaskFilters) => {
+    const url = taskExportXlsxUrl(f)
+    const token = localStorage.getItem('pd_token')
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) return
+    const blob = await res.blob()
     const a = document.createElement('a')
-    a.href = taskExportXlsxUrl(f)
+    a.href = URL.createObjectURL(blob)
+    a.download = `tasks_${new Date().toISOString().slice(0,10)}.xlsx`
     document.body.appendChild(a)
     a.click()
     a.remove()
+    URL.revokeObjectURL(a.href)
   }
 
   return (
