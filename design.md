@@ -2,8 +2,8 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 2.0
-**Last Updated:** 2026-07-11
+**Version:** 2.1
+**Last Updated:** 2026-08-03
 
 ---
 
@@ -305,14 +305,26 @@ In addition to the cards, the two panels below them are click-through to the sam
 ## Authentication & Roles
 
 - JWT-based auth (HS256, 24h expiry)
-- Lead account: hardcoded email `lead@teamman.local`, password stored as bcrypt hash in AppConfig
+- Lead login: `lead@teamman.local` (system) **or** any `team_members` row with `role = 'Lead'` (e.g. `Ganesh.t@hornerautomation.in`)
+- `/auth/me` always resolves role, id, and name from DB — stale tokens self-correct on page refresh
 - Members: login with their email; first login forces password setup
-- Roles: `lead` (full access) | `member` (read-only tasks, own todos, own portal creds)
-- All API routes protected by JWT middleware except /auth/* and /health
+- Roles in JWT: `lead` (full access) | `member` (read-only tasks, own todos, own portal creds)
+- Any `team_members` row with `role = 'Lead'` receives `"lead"` JWT claim automatically at login
+- All API routes protected by JWT middleware except `/auth/*` and `/health`
 
 ## Per-User Isolation
 
-Todos (threads + items) and portal credentials are scoped to `member_id`. Each member sees and manages only their own records. The lead account has unrestricted access to all records across all members.
+Todos and portal credentials are scoped to `member_id` (FK to `team_members`). Each user sees and manages only their own records.
+
+- `_resolve_member_id(user, db)` — used in `todos.py` and `portal.py`: always looks up by `user["email"]` from DB so stale tokens with wrong `id` still work. Routes `lead@teamman.local` to the first real Lead-role member (Ganesh).
+- Portal credentials: if a member has no credential of their own, falls back to any configured credential so all members see clickable Mantis bug ID links.
+- Startup migration (`_ensure_schema`): assigns NULL `member_id` todos and credentials to the first Lead-role non-system member.
+
+## LAN Access
+
+- Vite runs with `host: true` — teammates access via `http://<lead-machine-ip>:3000`
+- Backend CORS: `allow_origins = ["*"]` for LAN teammates
+- File downloads (Excel, PDF, Word) use `fetch` with `Authorization: Bearer` header — direct `<a href>` links are not used for protected endpoints
 
 ---
 
@@ -486,3 +498,4 @@ Both exports generate the same document structure:
 | 1.0 | — | Initial release: task management, member hierarchy, SID status codes, priority queues |
 | 1.17 | 2026-06-25 | Phase 1 complete: task checklists, inline editing, Excel export, dark mode, ArchitectUI theme, todo drag-and-drop, include/exclude filter builder, progress field, clickable dashboard cards |
 | 2.0 | 2026-07-11 | JWT authentication (HS256, 24h), bcrypt member passwords, lead account with forced first-login password setup, role-based access (lead full / member read-only + own todos + own portal creds), per-user todo and portal credential isolation (member_id FK), My Task Board page for members, SID15 (Debug) and SID16 (Moved to Software) status codes, safe DB migration replacing data-wipe seed with `lead_seeded_v1` |
+| 2.1 | 2026-08-03 | LAN team access (host:true, CORS *), lead role by DB (any Lead-role member gets lead JWT), /auth/me resolves role from DB so stale tokens self-correct, _resolve_member_id pattern in todos+portal, portal credential fallback for all members, DB migration assigns NULL todos+credentials to first real Lead, Excel/PDF/Word exports use Bearer-authenticated fetch (fixes 401 on download) |

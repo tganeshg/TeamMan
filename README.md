@@ -2,7 +2,7 @@
 
 **Prime Team Task & Project Management Application**
 
-PrimeDesk is a local web application built for the Prime Team project lead. It manages team members, tasks, task relations, releases, and generates team performance reports — all running on your local machine with no cloud or internet required (except for Mantis portal fetch).
+PrimeDesk is a local web application for the entire Prime Team. It runs on the lead's machine and is accessible to all teammates over the local network. It manages team members, tasks, task relations, releases, and generates team performance reports — no cloud or internet required (except for Mantis portal fetch).
 
 ---
 
@@ -165,10 +165,19 @@ TeamMan/
 
 | Role | Access |
 |---|---|
-| **Lead** (`lead@teamman.local`) | Full access — create/edit/delete tasks, manage members, view all todos and portal credentials, all reports and settings |
-| **Member** | Read-only task list (no create/edit/delete), My Task Board (own assigned tasks), own todo threads, own portal credentials; cannot access team management or reports |
+| **Lead** | Full access — create/edit/delete tasks, inline editing, manage members, view all reports, export PDF/Word/Excel, full settings |
+| **Member** | Read-only task list, My Task Board (own assigned tasks), add comments & attachments, own todo threads, own portal credentials |
 
-Members are added by the lead via the Team page. Each member receives a login email and must set their password on first login.
+The lead can log in with `lead@teamman.local` **or** their own `@hornerautomation.in` email if added as `Lead` role in the Team page (e.g. `Ganesh.t@hornerautomation.in`). Any team member with `Lead` role gets full lead privileges automatically.
+
+Members are added via the Team page. Each member must set their password on first login.
+
+## LAN Access for Teammates
+
+1. Find your machine's IP: run `ipconfig` → look for **IPv4 Address** (e.g. `192.168.1.50`)
+2. Allow ports 3000 and 3001 through Windows Firewall (one-time setup)
+3. Share the URL with your team: `http://192.168.1.50:3000`
+4. Teammates log in with their `@hornerautomation.in` email
 
 ---
 

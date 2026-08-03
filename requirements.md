@@ -2,14 +2,14 @@
 
 **Application Name:** PrimeDesk
 **Team:** Prime Team
-**Version:** 1.17 (Phase 1 Complete)
-**Last Updated:** 2026-06-25
+**Version:** 2.1
+**Last Updated:** 2026-08-03
 
 ---
 
 ## Overview
 
-PrimeDesk is a local team and task management application built for the Prime Team project lead. It manages team members, tasks, task relations, meeting todo threads, releases, and generates team performance reports. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs entirely on the local machine and opens in the browser — no cloud or internet required except for portal fetch.
+PrimeDesk is a local team and task management application for the entire Prime Team. The lead has full administrative access; team members log in with their own credentials and get a role-appropriate view. It manages team members, tasks, task relations, meeting todo threads, releases, and generates team performance reports. Tasks are sourced either from the MantisHub bug portal (via REST API) or entered manually as feature requests. The application runs on the lead's machine and is accessible to all team members over the local network (LAN) — no cloud or internet required except for portal fetch.
 
 ---
 
@@ -302,16 +302,37 @@ Editable directly in the task list table without opening the modal:
 
 ---
 
-## 16. Authentication (Future — v2)
+## 16. Authentication & Access Control (v2 — Complete)
 
-- Login screen planned for a later phase
-- Current phase: no authentication, local access only
+- JWT-based login; tokens stored in `localStorage`, sent as `Authorization: Bearer` on every request
+- Two roles: **Lead** and **Member**
+- Any team member with `role = Lead` in the team table gets full lead privileges automatically
+- First login: member enters email + any password → prompted to set a permanent password
+- Lead logs in via `lead@teamman.local` OR their own `@hornerautomation.in` email if added as Lead in the team
+
+### Lead privileges
+- Create / edit / delete tasks, inline editing in task list
+- Manage team members (add / edit / delete; cannot add a second Lead)
+- View all reports and export PDF / Word / Excel
+- Full settings access (portal credentials, labels)
+- Full todo thread access (own threads)
+
+### Member privileges
+- Read-only task list; view task details, comments, attachments
+- My Task Board — own assigned tasks
+- Add comments and upload attachments on any task
+- Own todo threads (isolated per user)
+- Own Mantis portal credentials; bug ID links use lead's portal URL as fallback
+- Excel / PDF / Word exports use Bearer token fetch (no auth errors)
+
+### LAN access
+- Vite dev server runs with `host: true` — teammates open `http://<lead-machine-ip>:3000`
+- Backend CORS allows all origins for LAN teammates
 
 ---
 
-## Out of Scope (v1)
+## Out of Scope
 
-- Multi-user / concurrent access
 - Cloud deployment
 - Email / Slack / push notifications
 - Gantt chart or Kanban board view

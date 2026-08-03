@@ -16,6 +16,20 @@ const TIMING_BADGE: Record<string, { label: string; color: string }> = {
   closed:       { label: 'Closed',      color: '#1cc88a' },
 }
 
+async function downloadFile(url: string, filename: string) {
+  const token = localStorage.getItem('pd_token')
+  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) return
+  const blob = await res.blob()
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(a.href)
+}
+
 export default function Reports() {
   const [releases, setReleases] = useState<Release[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -210,20 +224,18 @@ export default function Reports() {
                       </div>
                     </div>
                     <div className="d-flex gap-2 flex-wrap">
-                      <a
-                        href={exportPdfUrl(report.release_id)}
-                        download
-                        className="btn btn-outline-secondary btn-sm"
+                      <Button
+                        variant="outline-secondary" size="sm"
+                        onClick={() => downloadFile(exportPdfUrl(report.release_id), `${report.release_name}_report.pdf`)}
                       >
                         <i className="bi bi-file-earmark-pdf me-1" />PDF
-                      </a>
-                      <a
-                        href={exportDocxUrl(report.release_id)}
-                        download
-                        className="btn btn-outline-primary btn-sm"
+                      </Button>
+                      <Button
+                        variant="outline-primary" size="sm"
+                        onClick={() => downloadFile(exportDocxUrl(report.release_id), `${report.release_name}_report.docx`)}
                       >
                         <i className="bi bi-file-earmark-word me-1" />Word
-                      </a>
+                      </Button>
                       {report.release_status === 'active' ? (
                         <Button variant="outline-success" size="sm" onClick={() => handleMarkComplete(report.release_id)}>
                           <i className="bi bi-check-circle me-1" />Mark Complete
