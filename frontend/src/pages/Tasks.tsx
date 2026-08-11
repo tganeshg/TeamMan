@@ -1792,7 +1792,7 @@ export default function Tasks() {
                       <div className="comment-header">
                         <span className="fw-semibold small">{c.author}</span>
                         <span className="text-muted" style={{ fontSize: '0.72rem' }}>
-                          {dayjs(c.created_at).format('DD MMM YYYY HH:mm')}
+                          {dayjs(c.created_at.endsWith('Z') ? c.created_at : c.created_at + 'Z').format('DD MMM YYYY HH:mm')}
                         </span>
                       </div>
                       <p className="mb-0 small">{c.content}</p>

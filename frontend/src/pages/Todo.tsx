@@ -548,7 +548,7 @@ function ThreadCard({ thread, onEdit, onDelete, onToggleStatus, onAddItem, onBul
         )}
 
         <div style={{ fontSize: '0.72rem', color: '#c0c0c8', marginTop: 10, textAlign: 'right' }}>
-          {dayjs(thread.created_at).format('DD MMM YYYY, HH:mm')}
+          {dayjs(thread.created_at.endsWith('Z') ? thread.created_at : thread.created_at + 'Z').format('DD MMM YYYY, HH:mm')}
         </div>
       </div>
       )}
