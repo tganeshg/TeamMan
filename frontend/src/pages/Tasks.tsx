@@ -368,7 +368,7 @@ export default function Tasks() {
           const trimmed = (val as string)?.trim()
           if (trimmed) quickUpdate(edit.taskId, { title: trimmed })
         } else if (edit?.field === 'due_date') {
-          quickUpdate(edit.taskId, { end_date: val || undefined })
+          quickUpdate(edit.taskId, { end_date: val || null })
         } else if (edit?.field === 'labels') {
           quickUpdate(edit.taskId, { label_ids: val as number[] ?? [] })
         } else if (edit?.field === 'priority') {
@@ -1124,7 +1124,7 @@ export default function Tasks() {
                               if (e.key === 'Enter') {
                                 const val = (e.target as HTMLInputElement).value
                                 closeInline()
-                                await quickUpdate(task.id, { end_date: val || undefined })
+                                await quickUpdate(task.id, { end_date: val || null })
                               }
                             }}
                           />
