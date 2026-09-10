@@ -44,8 +44,9 @@ PrimeDesk is a local web application for the entire Prime Team. It runs on the l
 ## Prerequisites
 
 ### Ubuntu / Linux
-- Python 3.10 (`/usr/bin/python3.10`)
-- Node.js 18+ and npm
+- Python 3.10 or newer (`start.sh` auto-detects 3.12 / 3.11 / 3.10 / `python3`)
+- The matching venv module — e.g. `sudo apt install python3.12-venv`
+- Node.js 18+ and npm — `sudo apt install -y nodejs npm`
 
 ### Windows
 - Python 3.x with pip on PATH
@@ -80,6 +81,18 @@ To restart the backend only (e.g. after a code change):
 ```bat
 restart_backend.bat
 ```
+
+`start.sh` self-heals the common Linux setup problems: it recreates `backend/.venv`
+if it exists without pip (bootstrapping via `ensurepip`, falling back to
+`get-pip.py`), frees port 3001 if a previous run left a backend behind, and
+reinstalls `node_modules` if its execute bits were lost by copying the tree from
+Windows (which makes vite fail with `Permission denied`).
+
+### Moving your data between machines
+
+`backend/teamman.db` and `backend/.fernet.key` are gitignored, so a fresh clone
+starts with an empty database. To carry your data across, copy **both** files —
+`.fernet.key` is what decrypts the stored Mantis API token.
 
 ---
 
