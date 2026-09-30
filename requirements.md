@@ -127,7 +127,18 @@ Quick filters: Assignee, Status, Type, Release, End date (due) range, Labels, Ac
 
 The task list view shows columns: Type, Assignee, Status, **Progress**, Due Date, Labels, and **Release** (plus ID, Title, Priority).
 
-Sort by: Priority (default) · Title · Due Date — direction toggleable
+### Sorting
+
+Sort by any of: Priority (default) · ID · Title · Type · Assignee · Status · Progress · Start Date · Due Date · Release · Created — direction toggleable.
+
+Two equivalent controls, kept in sync:
+
+- **Column headers** — click a header to sort by it; click the active column again to flip direction. The active column shows an up/down arrow, inactive columns a neutral hint icon. Labels is not sortable (a task can carry several).
+- **Sort dropdown** in the filter bar, with the asc/desc toggle beside it.
+
+A newly picked column starts ascending, except Due Date, Start Date, Created and Progress, which start descending (most recent / furthest along first).
+
+Empty values always sort **last** in either direction, so unassigned or undated tasks never push real values off the top. Sorting runs in the database and respects all active filters.
 
 ### Include / Exclude Filter Builder
 

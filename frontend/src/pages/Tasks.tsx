@@ -606,6 +606,45 @@ export default function Tasks() {
     URL.revokeObjectURL(a.href)
   }
 
+  // Click a column header to sort by it; click the active column again to flip
+  // direction. New columns start ascending, except dates/priority-like columns
+  // where "most recent / most urgent first" is the more useful default.
+  const toggleSort = (field: string) => {
+    setFilters(f => {
+      if (f.sort_by === field) {
+        return { ...f, sort_order: f.sort_order === 'asc' ? 'desc' : 'asc' }
+      }
+      const descFirst = ['end_date', 'start_date', 'created_at', 'progress']
+      return { ...f, sort_by: field, sort_order: descFirst.includes(field) ? 'desc' : 'asc' }
+    })
+  }
+
+  const SortableTh = ({ field, label, width, className }: {
+    field: string; label: string; width?: number; className?: string
+  }) => {
+    const active = filters.sort_by === field
+    return (
+      <th
+        className={className}
+        style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+        onClick={() => toggleSort(field)}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <i
+          className={`bi ms-1 ${active
+            ? (filters.sort_order === 'asc' ? 'bi-sort-up' : 'bi-sort-down')
+            : 'bi-arrow-down-up'}`}
+          style={{
+            fontSize: '0.7rem',
+            color: active ? 'var(--primary)' : '#c8cad8',
+            opacity: active ? 1 : 0.7,
+          }}
+        />
+      </th>
+    )
+  }
+
   return (
     <>
       {headerEl && createPortal(
@@ -752,8 +791,16 @@ export default function Tasks() {
               onChange={e => setFilters(f => ({ ...f, end_date_to: e.target.value || undefined }))} />
             <Form.Select size="sm" style={{ flex: '0 1 120px', minWidth: 110 }} value={filters.sort_by} onChange={e => setFilters(f => ({ ...f, sort_by: e.target.value }))}>
               <option value="priority">Priority</option>
+              <option value="portal_task_id">ID</option>
               <option value="title">Title</option>
+              <option value="task_type">Type</option>
+              <option value="assignee">Assignee</option>
+              <option value="status">Status</option>
+              <option value="progress">Progress</option>
+              <option value="start_date">Start Date</option>
               <option value="end_date">Due Date</option>
+              <option value="release">Release</option>
+              <option value="created_at">Created</option>
             </Form.Select>
             <Button
               variant={filters.sort_order === 'asc' ? 'outline-primary' : 'primary'}
@@ -842,16 +889,16 @@ export default function Tasks() {
                       />
                     </th>
                   )}
-                  <th className="ps-2" style={{ width: 50 }}>P#</th>
-                  <th style={{ width: 80 }}>ID</th>
-                  <th>Title</th>
-                  <th style={{ width: 90 }}>Type</th>
-                  <th style={{ width: 150 }}>Assignee</th>
-                  <th style={{ width: 130 }}>Status</th>
-                  <th style={{ width: 120 }}>Progress</th>
-                  <th style={{ width: 145 }}>Due Date</th>
+                  <SortableTh field="priority"       label="P#"       width={50}  className="ps-2" />
+                  <SortableTh field="portal_task_id" label="ID"       width={80} />
+                  <SortableTh field="title"          label="Title" />
+                  <SortableTh field="task_type"      label="Type"     width={90} />
+                  <SortableTh field="assignee"       label="Assignee" width={150} />
+                  <SortableTh field="status"         label="Status"   width={130} />
+                  <SortableTh field="progress"       label="Progress" width={120} />
+                  <SortableTh field="end_date"       label="Due Date" width={145} />
                   <th>Labels</th>
-                  <th style={{ width: 120 }}>Release</th>
+                  <SortableTh field="release"        label="Release"  width={120} />
                   <th style={{ width: 80 }}></th>
                 </tr>
               </thead>

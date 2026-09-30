@@ -14,6 +14,7 @@ PrimeDesk is a local web application for the entire Prime Team. It runs on the l
 | **Task Management** | Full CRUD, priority auto-reorder per member (sequential, gap-free), SID status codes, progress % (100% auto-closes), labels, comments, attachments; Excel (.xlsx) export with or without filters |
 | **Task Checklists** | Per-task checklist sub-items — add/edit/delete, toggle done, drag-and-drop reorder, bulk-import from a `.txt` file; managed in the task modal and persisted on save, shown in the detail panel and as a `done/total` badge in the list |
 | **Inline Editing** | Edit Priority, Assignee, Status, Progress, Release, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
+| **Column Sorting** | Click any column header to sort — Priority, ID, Title, Type, Assignee, Status, Progress, Due Date, Release; click again to flip direction. Empty values always sort last. Also available via the sort dropdown in the filter bar |
 | **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |

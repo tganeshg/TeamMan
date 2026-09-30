@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import or_, nullslast
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date, timedelta
@@ -22,7 +22,7 @@ def _csv_strs(s: Optional[str]) -> list:
     return [x.strip() for x in s.split(",") if x.strip()]
 
 from database import get_db
-from models import Task, Label, TeamMember, TaskChecklistItem
+from models import Task, Label, TeamMember, TaskChecklistItem, Release
 from schemas import TaskCreate, TaskUpdate, TaskOut, TaskDetail, AssignRequest
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -212,13 +212,27 @@ def _query_tasks(
     if ex_progress:
         q = q.filter(Task.progress.notin_(ex_progress))
 
+    # Columns reachable directly on Task
     col_map = {
         "priority": Task.priority, "title": Task.title,
         "start_date": Task.start_date, "end_date": Task.end_date,
-        "created_at": Task.created_at,
+        "created_at": Task.created_at, "status": Task.status,
+        "progress": Task.progress, "task_type": Task.task_type,
+        "portal_task_id": Task.portal_task_id,
     }
-    col = col_map.get(sort_by, Task.priority)
-    q = q.order_by(col.asc() if sort_order == "asc" else col.desc())
+    # Columns on a related table need an outer join to sort on
+    if sort_by == "assignee":
+        q = q.outerjoin(TeamMember, Task.assignee_id == TeamMember.id)
+        col = TeamMember.name
+    elif sort_by == "release":
+        q = q.outerjoin(Release, Task.release_id == Release.id)
+        col = Release.name
+    else:
+        col = col_map.get(sort_by, Task.priority)
+
+    # NULLs sort last in either direction, so unassigned/undated tasks never
+    # push real values off the top of the list.
+    q = q.order_by(nullslast(col.asc() if sort_order == "asc" else col.desc()))
     return q.all()
 
 
