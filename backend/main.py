@@ -69,6 +69,11 @@ def _ensure_schema():
                 "ALTER TABLE tasks ADD COLUMN progress INTEGER NOT NULL DEFAULT 0"
             ))
 
+    if "estimated_days" not in task_cols:
+        with engine.begin() as conn:
+            # Nullable — existing tasks simply have no estimate recorded
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN estimated_days INTEGER"))
+
     member_cols = {c["name"] for c in insp.get_columns("team_members")}
     if "password_hash" not in member_cols:
         with engine.begin() as conn:

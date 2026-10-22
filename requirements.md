@@ -46,6 +46,7 @@ PrimeDesk is a local team and task management application for the entire Prime T
 | Progress | 0–100% in fixed steps of 10 (default 0); 100% auto-closes the task (see §3a) |
 | Start Date | Task start date |
 | End Date | Task due date |
+| Days to Complete | Effort estimate in days (optional). Independent of the start/end window — a task may be scheduled across two weeks but take only 5 days of work |
 | Release | Which release this task belongs to (optional tag) |
 | Labels | Dynamic user-defined labels (multi-select, filterable) |
 | Color | Auto-computed on every read based on status and date |
@@ -53,6 +54,14 @@ PrimeDesk is a local team and task management application for the entire Prime T
 | Attachments | One or more files per task (stored locally, downloadable) |
 | Relations | Typed links to other tasks |
 | Checklist | Ordered sub-items with done state (see §10a) |
+
+### Days to Complete (Effort Estimate)
+
+- Entered in the task form as a whole number of days, directly below Start/End Date
+- **Independent of the scheduled window** — the dates say *when* the task runs, this says *how much work* it is
+- Optional: existing and new tasks may leave it blank; clearing the field unsets it
+- When both dates are set, the form shows the scheduled window (e.g. "Scheduled window is 12 days") beside the field, so a deliberately different estimate is visible while typing
+- Shown in the task detail panel, included in the Excel export (**Est. Days** column), and available as a sort option
 
 ### Task Status Codes
 
@@ -163,6 +172,16 @@ Beyond the quick filters, a builder supports multi-value **Include** and **Exclu
 - The filter bar is fully controlled; navigating in from a dashboard stat card applies a **preset filter** and shows a `Showing: <label>` banner with a **Clear filter** button that resets to the default view.
 - **By default the Tasks list hides done tasks** — Closed (SID12) and Released (SID13) — via default `Exclude Status` chips. Remove the chips — or open a dashboard preset (e.g. the Closed / Total stat cards) — to include them.
 - A **count of listed tasks** is shown at the right of the filter-builder row and reflects the current filter result (e.g. "12 tasks listed").
+
+### Filter Persistence
+
+The current filter and sort selection **survives a page refresh**. It is stored in the browser (`localStorage`, key `pd_task_filters`), so it is per-person and per-machine — each teammate keeps their own view, and nothing is sent to the server.
+
+- Reopening the Tasks page, or refreshing it, restores the last view — quick filters, include/exclude chips, sort column and direction.
+- A `Showing: <label>` banner from a dashboard preset is restored too, so a filtered list always explains why it is filtered.
+- Arriving from a **dashboard stat card overrides** the saved view — clicking a card is an explicit request for that view.
+- **Clear filter** resets to the default view and forgets the saved one, so a later refresh does not bring the old filters back.
+- If browser storage is unavailable (private window, cleared site data), the page falls back to the default view rather than failing.
 
 ## 7a. Inline Editing (Task List)
 

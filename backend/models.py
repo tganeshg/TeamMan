@@ -66,6 +66,7 @@ class Task(Base):
     progress = Column(Integer, nullable=False, default=0)   # 0..100 in steps of 10
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
+    estimated_days = Column(Integer, nullable=True)   # effort estimate, independent of the scheduled window
     release_id = Column(Integer, ForeignKey("releases.id", ondelete="SET NULL"), nullable=True)
     closed_at = Column(Date, nullable=True)  # auto-set when status → SID12/SID13
     created_at = Column(DateTime, default=func.now())

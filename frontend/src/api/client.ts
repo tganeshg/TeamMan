@@ -113,11 +113,13 @@ export const createTask = (data: {
   portal_task_id?: string
   start_date?: string
   end_date?: string
+  estimated_days?: number | null
   status?: string
   progress?: number
   assignee_id?: number
   priority?: number
   label_ids?: number[]
+  release_id?: number | null
   checklist?: ChecklistItemInput[]
 }) => api.post<Task>('/tasks', data).then(r => r.data)
 
@@ -128,6 +130,7 @@ export const updateTask = (id: number, data: Partial<{
   portal_task_id: string
   start_date: string
   end_date: string
+  estimated_days: number | null
   status: string
   progress: number
   assignee_id: number

@@ -74,6 +74,7 @@ class TaskBase(BaseModel):
     portal_task_id: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    estimated_days: Optional[int] = None   # effort estimate in days
     status: str = "SID00"
     progress: int = 0           # 0..100 in steps of 10
     release_id: Optional[int] = None
@@ -93,6 +94,7 @@ class TaskUpdate(BaseModel):
     portal_task_id: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    estimated_days: Optional[int] = None
     status: Optional[str] = None
     progress: Optional[int] = None
     assignee_id: Optional[int] = None

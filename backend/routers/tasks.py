@@ -219,6 +219,7 @@ def _query_tasks(
         "created_at": Task.created_at, "status": Task.status,
         "progress": Task.progress, "task_type": Task.task_type,
         "portal_task_id": Task.portal_task_id,
+        "estimated_days": Task.estimated_days,
     }
     # Columns on a related table need an outer join to sort on
     if sort_by == "assignee":
@@ -345,7 +346,8 @@ def export_tasks_xlsx(
     ws = wb.active
     ws.title = "Tasks"
     headers = ["Priority", "Portal ID", "Title", "Type", "Assignee", "Status",
-               "Progress %", "Start Date", "End Date", "Release", "Labels", "Created"]
+               "Progress %", "Start Date", "End Date", "Est. Days", "Release",
+               "Labels", "Created"]
     ws.append(headers)
     header_fill = PatternFill("solid", fgColor="4E73DF")
     for c, _ in enumerate(headers, start=1):
@@ -365,12 +367,13 @@ def export_tasks_xlsx(
             t.progress,
             t.start_date.isoformat() if t.start_date else "",
             t.end_date.isoformat() if t.end_date else "",
+            t.estimated_days if t.estimated_days is not None else "",
             t.release.name if t.release else "",
             ", ".join(l.name for l in t.labels),
             t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
         ])
 
-    widths = [9, 10, 50, 9, 16, 22, 11, 12, 12, 14, 24, 17]
+    widths = [9, 10, 50, 9, 16, 22, 11, 12, 12, 10, 14, 24, 17]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A2"

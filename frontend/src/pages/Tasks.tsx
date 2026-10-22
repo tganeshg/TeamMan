@@ -106,6 +106,39 @@ function PriorityDot({ p }: { p: number | null }) {
   return <span className="priority-badge" style={{ background: bg }}>{p}</span>
 }
 
+// ── Filter persistence ──────────────────────────────────────────────────────
+// The task filter/sort selection survives a page refresh. Stored per browser,
+// so each teammate keeps their own view.
+const FILTERS_KEY = 'pd_task_filters'
+const DEFAULT_FILTERS: TaskFilters = {
+  sort_by: 'priority', sort_order: 'asc', exclude_status: ['SID12', 'SID13'],
+}
+
+interface SavedView { filters: TaskFilters; presetLabel: string | null }
+
+function loadSavedView(): SavedView | null {
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Guard against a corrupt or hand-edited value
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    if (!parsed.filters || typeof parsed.filters !== 'object') return null
+    return { filters: parsed.filters as TaskFilters, presetLabel: parsed.presetLabel ?? null }
+  } catch {
+    return null   // private window, cleared storage, or bad JSON
+  }
+}
+
+function saveView(filters: TaskFilters, presetLabel: string | null) {
+  try { localStorage.setItem(FILTERS_KEY, JSON.stringify({ filters, presetLabel })) }
+  catch { /* storage unavailable */ }
+}
+
+function clearSavedView() {
+  try { localStorage.removeItem(FILTERS_KEY) } catch { /* storage unavailable */ }
+}
+
 export default function Tasks() {
   const { user } = useAuth()
   const isLead = user?.role === 'lead'
@@ -120,14 +153,21 @@ export default function Tasks() {
   const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>(() => {
     const s = routeLocation.state as { preset?: TaskFilters } | null
-    // From a dashboard preset → use it as-is (may intentionally include done tasks)
+    // A dashboard preset is an explicit request for that view, so it wins over
+    // whatever was last saved.
     if (s?.preset) return { sort_by: 'priority', sort_order: 'asc', ...s.preset }
+    // Otherwise restore the last view this browser was using (survives refresh).
+    const saved = loadSavedView()
+    if (saved) return saved.filters
     // Default Tasks view hides done tasks — Closed (SID12) + Released (SID13); chips are removable
-    return { sort_by: 'priority', sort_order: 'asc', exclude_status: ['SID12', 'SID13'] }
+    return { ...DEFAULT_FILTERS }
   })
   const [presetLabel, setPresetLabel] = useState<string | null>(() => {
-    const s = routeLocation.state as { presetLabel?: string } | null
-    return s?.presetLabel ?? null
+    const s = routeLocation.state as { preset?: TaskFilters; presetLabel?: string } | null
+    if (s?.presetLabel) return s.presetLabel
+    // Keep the "Showing: …" banner (and its Clear button) across a refresh,
+    // so a restored preset view still explains itself.
+    return s?.preset ? null : (loadSavedView()?.presetLabel ?? null)
   })
 
   const [showDetail, setShowDetail] = useState(false)
@@ -322,6 +362,9 @@ export default function Tasks() {
 
   useEffect(() => { load() }, [load])
 
+  // Remember the current filter/sort selection so a refresh restores it
+  useEffect(() => { saveView(filters, presetLabel) }, [filters, presetLabel])
+
   const tasksRef = useRef<Task[]>([])
   useEffect(() => { tasksRef.current = tasks }, [tasks])
 
@@ -336,6 +379,7 @@ export default function Tasks() {
       priority: task.priority ?? undefined,
       end_date: task.end_date ?? undefined,
       start_date: task.start_date ?? undefined,
+      estimated_days: task.estimated_days ?? null,
       release_id: task.release_id ?? null,
       ...patch,
     })
@@ -448,6 +492,7 @@ export default function Tasks() {
       label_ids: src.labels.map(l => l.id),
       start_date: src.start_date ?? '',
       end_date: src.end_date ?? '',
+      estimated_days: src.estimated_days ?? '',
       release_id: src.release_id ?? null,
       checklist: (detail?.checklist ?? []).map(c => ({ id: c.id, text: c.text, done: c.done, key: `db-${c.id}` })),
     })
@@ -488,6 +533,9 @@ export default function Tasks() {
         portal_task_id: form.portal_task_id || undefined,
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
+        // Blank clears the estimate; null (not undefined) so the backend unsets it
+        estimated_days: form.estimated_days === '' || form.estimated_days == null
+          ? null : Number(form.estimated_days),
         status: form.status,
         progress: form.progress != null ? Number(form.progress) : 0,
         assignee_id: form.assignee_id ? Number(form.assignee_id) : undefined,
@@ -682,7 +730,7 @@ export default function Tasks() {
           <button
             className="btn btn-sm ms-auto"
             style={{ padding: '2px 10px', fontSize: '0.8rem', color: 'var(--primary)', border: '1px solid var(--primary)', background: 'transparent', borderRadius: 6 }}
-            onClick={() => { setPresetLabel(null); setFilters({ sort_by: 'priority', sort_order: 'asc', exclude_status: ['SID12', 'SID13'] }) }}
+            onClick={() => { setPresetLabel(null); clearSavedView(); setFilters({ ...DEFAULT_FILTERS }) }}
           >
             <i className="bi bi-x me-1" />Clear filter
           </button>
@@ -1385,6 +1433,38 @@ export default function Tasks() {
             </Col>
 
             <Col md={6}>
+              <Form.Label className="small fw-semibold">
+                Days to Complete
+                <span className="text-muted fw-normal ms-1" style={{ fontSize: '0.75rem' }}>
+                  — effort estimate
+                </span>
+              </Form.Label>
+              <InputGroup size="sm">
+                <Form.Control
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="e.g. 5"
+                  value={form.estimated_days ?? ''}
+                  onChange={e => setField('estimated_days', e.target.value)}
+                />
+                <InputGroup.Text>days</InputGroup.Text>
+              </InputGroup>
+              {(() => {
+                // Show the scheduled window alongside, so a wildly different
+                // estimate is obvious while typing.
+                if (!form.start_date || !form.end_date) return null
+                const span = dayjs(form.end_date).diff(dayjs(form.start_date), 'day') + 1
+                if (span <= 0) return null
+                return (
+                  <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: 2 }}>
+                    Scheduled window is {span} day{span === 1 ? '' : 's'}
+                  </div>
+                )
+              })()}
+            </Col>
+
+            <Col md={6}>
               <Form.Label className="small fw-semibold">Status</Form.Label>
               <Form.Select size="sm" value={form.status ?? 'SID00'} onChange={e => setField('status', e.target.value)}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -1732,6 +1812,14 @@ export default function Tasks() {
                   <span className="detail-meta-label">End Date</span>
                   <span style={{ color: selectedTask.color === 'red' ? '#dc3545' : undefined }}>
                     {selectedTask.end_date ? dayjs(selectedTask.end_date).format('DD MMM YYYY') : '—'}
+                  </span>
+                </div>
+                <div className="detail-meta-row">
+                  <span className="detail-meta-label">Days to Complete</span>
+                  <span>
+                    {selectedTask.estimated_days != null
+                      ? `${selectedTask.estimated_days} day${selectedTask.estimated_days === 1 ? '' : 's'}`
+                      : '—'}
                   </span>
                 </div>
                 <div className="detail-meta-row">

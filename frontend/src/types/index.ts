@@ -44,6 +44,7 @@ export interface Task {
   progress: number
   start_date: string | null
   end_date: string | null
+  estimated_days: number | null
   color: TaskColor
   labels: Label[]
   release_id: number | null
