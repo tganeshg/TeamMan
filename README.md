@@ -16,7 +16,7 @@ PrimeDesk is a local web application for the entire Prime Team. It runs on the l
 | **Inline Editing** | Edit Priority, Assignee, Status, Progress, Release, Due Date, Labels (and Title for feature tasks) directly in the task list — Enter saves, Escape cancels, outside-click auto-saves |
 | **Column Sorting** | Click any column header to sort — Priority, ID, Title, Type, Assignee, Status, Progress, Due Date, Release; click again to flip direction. Empty values always sort last. Also available via the sort dropdown in the filter bar |
 | **Filter Persistence** | The task filter and sort selection survives a page refresh, stored per browser so each teammate keeps their own view; a dashboard stat card overrides it, and **Clear filter** forgets it |
-| **Effort Estimates** | A **Days to Complete** field per task, independent of the start/end dates — the form shows the scheduled window beside it for comparison; appears in the detail panel, the Excel export and the sort options |
+| **Effort Estimates** | A **Days to Complete** field per task, independent of the start/end dates — the form shows the scheduled window beside it for comparison; shown as an **Est. Days** column in the task list (just after Due Date), plus the detail panel, Excel export and sort options |
 | **Dark Mode** | Topbar toggle; preference persisted in the browser (`localStorage`) |
 | **Task Relations** | Link tasks with typed relations: Duplicate, Parent, Child, Blocks, Blocked By, Related To |
 | **Mantis Integration** | Fetch task details from MantisHub portal via REST API using a stored API token |

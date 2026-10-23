@@ -61,7 +61,8 @@ PrimeDesk is a local team and task management application for the entire Prime T
 - **Independent of the scheduled window** — the dates say *when* the task runs, this says *how much work* it is
 - Optional: existing and new tasks may leave it blank; clearing the field unsets it
 - When both dates are set, the form shows the scheduled window (e.g. "Scheduled window is 12 days") beside the field, so a deliberately different estimate is visible while typing
-- Shown in the task detail panel, included in the Excel export (**Est. Days** column), and available as a sort option
+- Shown as an **Est. Days** column in the task list, placed directly after Due Date so the deadline and the effort read together
+- Also shown in the task detail panel, included in the Excel export (**Est. Days** column), and available as a sort option
 
 ### Task Status Codes
 
@@ -134,7 +135,9 @@ Color is computed server-side on every task fetch (never stored):
 
 Quick filters: Assignee, Status, Type, Release, End date (due) range, Labels, Active-only (non-terminal; used by the dashboard workload drill-through)
 
-The task list view shows columns: Type, Assignee, Status, **Progress**, Due Date, Labels, and **Release** (plus ID, Title, Priority).
+The task list view shows columns, in order: Priority, ID, Title, Assignee, Status, **Progress**, Due Date, **Est. Days**, Labels, **Release**.
+
+Type (Bug / Feature) is not a list column — it is shown in the task form and the detail panel, and remains available as a filter.
 
 ### Sorting
 

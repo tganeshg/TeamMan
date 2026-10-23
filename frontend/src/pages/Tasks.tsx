@@ -940,11 +940,11 @@ export default function Tasks() {
                   <SortableTh field="priority"       label="P#"       width={50}  className="ps-2" />
                   <SortableTh field="portal_task_id" label="ID"       width={80} />
                   <SortableTh field="title"          label="Title" />
-                  <SortableTh field="task_type"      label="Type"     width={90} />
                   <SortableTh field="assignee"       label="Assignee" width={150} />
                   <SortableTh field="status"         label="Status"   width={130} />
                   <SortableTh field="progress"       label="Progress" width={120} />
                   <SortableTh field="end_date"       label="Due Date" width={145} />
+                  <SortableTh field="estimated_days" label="Est. Days" width={95} />
                   <th>Labels</th>
                   <SortableTh field="release"        label="Release"  width={120} />
                   <th style={{ width: 80 }}></th>
@@ -1061,11 +1061,6 @@ export default function Tasks() {
                           })()}
                         </>
                       )}
-                    </td>
-                    <td>
-                      <Badge bg={task.task_type === 'bug' ? 'danger' : 'info'} className="fw-normal">
-                        {task.task_type === 'bug' ? '🐛 Bug' : '✨ Feature'}
-                      </Badge>
                     </td>
                     {/* Assignee — inline editable */}
                     <td
@@ -1231,6 +1226,18 @@ export default function Tasks() {
                           </span>
                         </span>
                       )}
+                    </td>
+
+                    {/* Est. Days — effort estimate, sits beside the due date */}
+                    <td>
+                      {task.estimated_days != null
+                        ? <span style={{ whiteSpace: 'nowrap' }}>
+                            <strong>{task.estimated_days}</strong>
+                            <span className="text-muted" style={{ fontSize: '0.78rem' }}>
+                              {' '}day{task.estimated_days === 1 ? '' : 's'}
+                            </span>
+                          </span>
+                        : <span className="text-muted">—</span>}
                     </td>
 
                     {/* Labels — inline editable */}
