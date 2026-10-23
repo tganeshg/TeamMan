@@ -61,7 +61,7 @@ PrimeDesk is a local team and task management application for the entire Prime T
 - **Independent of the scheduled window** — the dates say *when* the task runs, this says *how much work* it is
 - Optional: existing and new tasks may leave it blank; clearing the field unsets it
 - When both dates are set, the form shows the scheduled window (e.g. "Scheduled window is 12 days") beside the field, so a deliberately different estimate is visible while typing
-- Shown as an **Est. Days** column in the task list, placed directly after Due Date so the deadline and the effort read together
+- Shown as an **Est. Days** column in the task list, placed directly after Due Date so the deadline and the effort read together — and **editable inline there** (see §7a), without opening the task form
 - Also shown in the task detail panel, included in the Excel export (**Est. Days** column), and available as a sort option
 
 ### Task Status Codes
@@ -195,6 +195,7 @@ Editable directly in the task list table without opening the modal:
 | Priority | number popover (only when assigned) | Enter saves · Esc cancels · outside-click auto-saves |
 | Title | text popover (**feature tasks only**) | Enter saves · Esc cancels · outside-click auto-saves |
 | Due Date | date popover | Enter saves · Esc cancels · outside-click auto-saves |
+| Est. Days | number popover | Enter saves · Esc cancels · outside-click auto-saves; blank clears the estimate |
 | Labels | checkbox popover | outside-click auto-saves |
 | Assignee | dropdown | saves on change |
 | Status | dropdown | saves on change |

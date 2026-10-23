@@ -349,7 +349,7 @@ export default function Tasks() {
   ]))
 
   // Inline editing state
-  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release' } | null>(null)
+  const [inlineEdit, setInlineEdit] = useState<{ taskId: number; field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release' | 'est_days' } | null>(null)
   const [inlineValue, setInlineValue] = useState<any>(null)
   const inlineRef = useRef<HTMLDivElement>(null)
   const inlineEditRef = useRef<typeof inlineEdit>(null)
@@ -386,7 +386,7 @@ export default function Tasks() {
     load()
   }
 
-  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release', currentValue: any) => {
+  const openInline = (taskId: number, field: 'assignee' | 'status' | 'due_date' | 'labels' | 'priority' | 'title' | 'progress' | 'release' | 'est_days', currentValue: any) => {
     if (!isLead) return
     inlineEditRef.current = { taskId, field }
     inlineValueRef.current = currentValue
@@ -413,6 +413,9 @@ export default function Tasks() {
           if (trimmed) quickUpdate(edit.taskId, { title: trimmed })
         } else if (edit?.field === 'due_date') {
           quickUpdate(edit.taskId, { end_date: val || null })
+        } else if (edit?.field === 'est_days') {
+          // Blank clears the estimate; null (not undefined) so the backend unsets it
+          quickUpdate(edit.taskId, { estimated_days: val === '' || val == null ? null : Number(val) })
         } else if (edit?.field === 'labels') {
           quickUpdate(edit.taskId, { label_ids: val as number[] ?? [] })
         } else if (edit?.field === 'priority') {
@@ -1228,16 +1231,46 @@ export default function Tasks() {
                       )}
                     </td>
 
-                    {/* Est. Days — effort estimate, sits beside the due date */}
-                    <td>
-                      {task.estimated_days != null
-                        ? <span style={{ whiteSpace: 'nowrap' }}>
-                            <strong>{task.estimated_days}</strong>
-                            <span className="text-muted" style={{ fontSize: '0.78rem' }}>
-                              {' '}day{task.estimated_days === 1 ? '' : 's'}
-                            </span>
-                          </span>
-                        : <span className="text-muted">—</span>}
+                    {/* Est. Days — effort estimate, inline editable, sits beside the due date */}
+                    <td
+                      style={{ position: 'relative' }}
+                      onClick={e => { if (isLead) { e.stopPropagation(); openInline(task.id, 'est_days', task.estimated_days ?? '') } }}
+                    >
+                      {inlineEdit?.taskId === task.id && inlineEdit?.field === 'est_days' ? (
+                        <div ref={inlineRef} style={{ position: 'absolute', zIndex: 100, background: 'var(--bs-body-bg, #fff)', border: '1px solid var(--card-border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8, minWidth: 120, top: 0, left: 0 }}>
+                          <InputGroup size="sm">
+                            <Form.Control
+                              type="number"
+                              min={0}
+                              step={1}
+                              autoFocus
+                              placeholder="—"
+                              value={inlineValue ?? task.estimated_days ?? ''}
+                              onChange={e => { setInlineValue(e.target.value); inlineValueRef.current = e.target.value }}
+                              onKeyDown={async e => {
+                                if (e.key === 'Escape') { closeInline(); return }
+                                if (e.key === 'Enter') {
+                                  const val = (e.target as HTMLInputElement).value
+                                  closeInline()
+                                  await quickUpdate(task.id, { estimated_days: val === '' ? null : Number(val) })
+                                }
+                              }}
+                            />
+                            <InputGroup.Text style={{ fontSize: '0.72rem' }}>d</InputGroup.Text>
+                          </InputGroup>
+                        </div>
+                      ) : (
+                        <span className="inline-editable-cell">
+                          {task.estimated_days != null
+                            ? <span style={{ whiteSpace: 'nowrap' }}>
+                                <strong>{task.estimated_days}</strong>
+                                <span className="text-muted" style={{ fontSize: '0.78rem' }}>
+                                  {' '}day{task.estimated_days === 1 ? '' : 's'}
+                                </span>
+                              </span>
+                            : <span className="text-muted">—</span>}
+                        </span>
+                      )}
                     </td>
 
                     {/* Labels — inline editable */}
